@@ -1,0 +1,21 @@
+{
+  "name": "retrouvailles-app",
+  "version": "1.0.0",
+  "description": "Organiser des retrouvailles entre amis : proposer une sortie, voter ses disponibilites, valider le meilleur jour.",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "prestart": "prisma generate && prisma db push",
+    "start": "node server.js",
+    "predev": "prisma generate && prisma db push",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0",
+    "ejs": "^3.1.10",
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.20.0"
+  }
+}

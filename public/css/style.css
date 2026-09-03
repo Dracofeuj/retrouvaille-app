@@ -1,0 +1,359 @@
+/* Design sobre et mobile d'abord : blanc/gris, un seul bleu d'accent,
+   jaune/ambre pour les disponibilites, vert pour confirme. */
+
+:root {
+  --accent: #378ADD;
+  --accent-fonce: #2a6cb0;
+  --gris-950: #1a1d21;
+  --gris-700: #4a5157;
+  --gris-500: #8a9198;
+  --gris-200: #e4e7ea;
+  --gris-100: #f2f4f6;
+  --blanc: #ffffff;
+
+  --ambre-1: #fef3c7;
+  --ambre-2: #fcd34d;
+  --ambre-3: #f5a623;
+  --ambre-4: #d9770a;
+
+  --vert: #2fae5c;
+  --vert-clair: #e3f6e9;
+  --rouge: #c0392b;
+
+  --rayon: 14px;
+  --rayon-petit: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--gris-100);
+  color: var(--gris-950);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.4;
+}
+
+.page {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 28px 20px 56px;
+}
+
+.titre-app {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.titre-sortie {
+  font-size: 22px;
+}
+
+.sous-titre {
+  color: var(--gris-700);
+  margin: 0 0 24px;
+}
+
+.aide {
+  color: var(--gris-700);
+  font-size: 14px;
+  margin: 0 0 16px;
+}
+
+.entete-sortie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.badge-role {
+  background: var(--accent);
+  color: var(--blanc);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.carte {
+  background: var(--blanc);
+  border-radius: var(--rayon);
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.titre-section {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.champ {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gris-700);
+}
+
+.champ input,
+.champ select {
+  font-size: 16px; /* evite le zoom automatique sur iPhone */
+  font-family: inherit;
+  font-weight: 400;
+  color: var(--gris-950);
+  padding: 12px 14px;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--rayon-petit);
+  background: var(--blanc);
+  width: 100%;
+}
+
+.champ input:focus,
+.champ select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.bouton {
+  display: inline-block;
+  border: none;
+  border-radius: var(--rayon-petit);
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+}
+
+.bouton-principal {
+  background: var(--accent);
+  color: var(--blanc);
+}
+
+.bouton-principal:hover {
+  background: var(--accent-fonce);
+}
+
+.bouton-principal:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.bouton-valider {
+  background: var(--vert);
+  color: var(--blanc);
+}
+
+.bouton-pleine-largeur {
+  display: block;
+  width: 100%;
+}
+
+.message-etat {
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: var(--gris-700);
+  min-height: 18px;
+}
+
+.message-erreur {
+  color: var(--rouge);
+  font-weight: 600;
+}
+
+.bandeau-confirme {
+  background: var(--vert-clair);
+  color: #1c6b3a;
+  border-radius: var(--rayon-petit);
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  font-size: 15px;
+}
+
+/* Calendrier : grille de cases, une par jour */
+
+.calendrier {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.entete-mois {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gris-700);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 10px;
+}
+
+.entete-mois:first-child {
+  margin-top: 0;
+}
+
+.case-jour {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--rayon-petit);
+  border: 1px solid var(--gris-200);
+  background: var(--blanc);
+  font-family: inherit;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.case-jour-semaine {
+  font-size: 11px;
+  color: var(--gris-500);
+  text-transform: lowercase;
+}
+
+.case-jour-nombre {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.case-jour-selectionnee {
+  background: var(--ambre-2);
+  border-color: var(--ambre-3);
+}
+
+.case-jour-selectionnee .case-jour-semaine {
+  color: #7a5200;
+}
+
+.case-jour-lecture {
+  cursor: default;
+}
+
+.case-jour-compte {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gris-700);
+}
+
+.intensite-0 { background: var(--blanc); }
+.intensite-1 { background: var(--ambre-1); border-color: var(--ambre-1); }
+.intensite-2 { background: var(--ambre-2); border-color: var(--ambre-2); }
+.intensite-3 { background: var(--ambre-3); border-color: var(--ambre-3); }
+.intensite-3 .case-jour-semaine,
+.intensite-3 .case-jour-compte { color: #5c3900; }
+.intensite-4 { background: var(--ambre-4); border-color: var(--ambre-4); }
+.intensite-4 .case-jour-semaine,
+.intensite-4 .case-jour-nombre,
+.intensite-4 .case-jour-compte { color: var(--blanc); }
+
+.case-jour-meilleure {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.case-jour-validee {
+  background: var(--vert);
+  border-color: var(--vert);
+}
+
+.case-jour-validee .case-jour-semaine,
+.case-jour-validee .case-jour-nombre,
+.case-jour-validee .case-jour-compte {
+  color: var(--blanc);
+}
+
+.liste-participants {
+  font-size: 13px;
+  color: var(--gris-700);
+  margin: 12px 0 0;
+}
+
+/* Page de creation reussie : les deux liens */
+
+.bloc-lien {
+  margin-bottom: 18px;
+}
+
+.bloc-lien:last-child {
+  margin-bottom: 0;
+}
+
+.etiquette-lien {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gris-700);
+  margin-bottom: 6px;
+}
+
+.bloc-lien-secret .etiquette-lien {
+  color: var(--accent-fonce);
+}
+
+.ligne-copie {
+  display: flex;
+  gap: 8px;
+}
+
+.ligne-copie input {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  padding: 10px 12px;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--rayon-petit);
+  background: var(--gris-100);
+  color: var(--gris-950);
+}
+
+.bouton-copier {
+  flex-shrink: 0;
+  border: 1px solid var(--accent);
+  background: var(--blanc);
+  color: var(--accent);
+  border-radius: var(--rayon-petit);
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lien-discret {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.lien-discret a,
+.lien-comme-bouton {
+  color: var(--accent);
+  font-size: 14px;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.lien-discret a:hover,
+.lien-comme-bouton:hover {
+  text-decoration: underline;
+}

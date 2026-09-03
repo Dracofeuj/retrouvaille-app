@@ -1,0 +1,49 @@
+// Schema de la base de donnees (SQLite pour demarrer, PostgreSQL plus tard
+// en changeant juste "provider" ci-dessous + la variable DATABASE_URL).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Une sortie proposee par un organisateur.
+model Evenement {
+  id                String   @id @default(cuid())
+  titre             String
+  dateDebut         String // format AAAA-MM-JJ (simple date, sans heure/fuseau)
+  dateFin           String // format AAAA-MM-JJ
+  statut            String   @default("en_cours") // "en_cours" ou "confirme"
+  jourValide        String? // format AAAA-MM-JJ, rempli quand confirme
+  jetonOrganisateur String   @unique @default(cuid()) // lien secret pour valider
+  createdAt         DateTime @default(now())
+
+  participants Participant[]
+}
+
+// Une personne qui a vote sur une sortie (invite : juste un prenom, pas de compte).
+model Participant {
+  id          String   @id @default(cuid())
+  evenementId String
+  prenom      String
+  createdAt   DateTime @default(now())
+
+  evenement Evenement @relation(fields: [evenementId], references: [id], onDelete: Cascade)
+  dispos    Dispo[]
+
+  @@unique([evenementId, prenom]) // un seul "profil" par prenom sur une sortie
+}
+
+// Un jour ou un participant a indique etre disponible.
+model Dispo {
+  id            String @id @default(cuid())
+  participantId String
+  jour          String // format AAAA-MM-JJ
+
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, jour])
+}

@@ -1,0 +1,114 @@
+<% titre = evenement.titre %>
+<%- include('partials/head') %>
+
+<div class="entete-sortie">
+  <h1 class="titre-app titre-sortie"><%= evenement.titre %></h1>
+  <% if (estOrganisateur) { %>
+    <p class="badge-role">Vue organisateur</p>
+  <% } %>
+</div>
+
+<% if (evenement.statut === 'confirme') { %>
+  <div class="bandeau-confirme">
+    ✅ Sortie confirmée pour le <strong><%= formaterJourLong(evenement.jourValide) %></strong>
+  </div>
+<% } %>
+
+<% if (!estOrganisateur) { %>
+<section class="carte" id="section-mes-dispos">
+  <h2 class="titre-section">Mes disponibilités</h2>
+
+  <label class="champ">
+    <span>Ton prénom</span>
+    <input type="text" id="champ-prenom" placeholder="Ton prénom" maxlength="40" />
+  </label>
+
+  <p class="aide">Touche les jours où tu es dispo. Ils passent en jaune.</p>
+
+  <div class="calendrier" id="calendrier-perso">
+    <% joursAffiches.forEach(function(j) { %>
+      <% if (j.premierDuMois) { %><div class="entete-mois"><%= j.moisLabel %></div><% } %>
+      <button type="button" class="case-jour" data-jour="<%= j.jour %>">
+        <span class="case-jour-semaine"><%= j.jourSemaine %></span>
+        <span class="case-jour-nombre"><%= j.jourNombre %></span>
+      </button>
+    <% }) %>
+  </div>
+
+  <button type="button" class="bouton bouton-principal bouton-pleine-largeur" id="bouton-enregistrer">
+    Enregistrer mes disponibilités
+  </button>
+  <p class="message-etat" id="message-etat"></p>
+</section>
+<% } %>
+
+<section class="carte">
+  <h2 class="titre-section">Vue du groupe</h2>
+  <p class="aide">
+    <% if (totalParticipants === 0) { %>
+      Personne n'a encore voté.
+    <% } else { %>
+      <%= totalParticipants %> participant<%= totalParticipants > 1 ? 's' : '' %> ont voté. Plus la case est foncée, plus il y a de monde ce jour-là.
+    <% } %>
+  </p>
+
+  <div class="calendrier">
+    <% joursAffiches.forEach(function(j) { %>
+      <% if (j.premierDuMois) { %><div class="entete-mois"><%= j.moisLabel %></div><% } %>
+      <div class="case-jour case-jour-lecture
+        <%= j.estValide ? 'case-jour-validee' : 'intensite-' + j.intensite %>
+        <%= (j.estMeilleur && evenement.statut !== 'confirme') ? 'case-jour-meilleure' : '' %>">
+        <span class="case-jour-semaine"><%= j.jourSemaine %></span>
+        <span class="case-jour-nombre"><%= j.jourNombre %></span>
+        <% if (j.nombreDispos > 0) { %><span class="case-jour-compte"><%= j.nombreDispos %></span><% } %>
+      </div>
+    <% }) %>
+  </div>
+
+  <% if (participants.length > 0) { %>
+    <p class="liste-participants">
+      A voté : <%= participants.map(function(p){ return p.prenom }).join(', ') %>
+    </p>
+  <% } %>
+</section>
+
+<% if (estOrganisateur && evenement.statut !== 'confirme') { %>
+<section class="carte">
+  <h2 class="titre-section">Valider le jour retenu</h2>
+  <% if (totalParticipants === 0) { %>
+    <p class="aide">Attends au moins un vote avant de valider un jour.</p>
+  <% } else { %>
+    <form method="post" action="/o/<%= evenement.jetonOrganisateur %>/valider">
+      <label class="champ">
+        <span>Jour à confirmer</span>
+        <select name="jour" required>
+          <% joursAffiches.forEach(function(j) { %>
+            <option value="<%= j.jour %>" <%= j.estMeilleur ? 'selected' : '' %>>
+              <%= j.libelleCourt %> — <%= j.nombreDispos %> dispo<%= j.nombreDispos > 1 ? 's' : '' %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+      <button type="submit" class="bouton bouton-valider bouton-pleine-largeur">Valider ce jour</button>
+    </form>
+  <% } %>
+</section>
+<% } %>
+
+<% if (!estOrganisateur) { %>
+<p class="lien-discret">
+  <button type="button" class="lien-comme-bouton" id="bouton-copier-partage" data-lien="<%= lienPartage %>">
+    Copier le lien de cette sortie pour inviter quelqu'un d'autre
+  </button>
+</p>
+<% } %>
+
+<script>
+  window.DONNEES_SORTIE = {
+    evenementId: <%- JSON.stringify(evenement.id) %>,
+    estOrganisateur: <%- JSON.stringify(estOrganisateur) %>,
+  };
+</script>
+<script src="/js/copier.js"></script>
+<% if (!estOrganisateur) { %><script src="/js/sortie.js"></script><% } %>
+<%- include('partials/foot') %>
