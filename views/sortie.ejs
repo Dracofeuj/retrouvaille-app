@@ -136,6 +136,9 @@
   window.DONNEES_SORTIE = {
     evenementId: <%- JSON.stringify(evenement.id) %>,
     estOrganisateur: <%- JSON.stringify(estOrganisateur) %>,
+    // Ne sert qu'a pre-remplir le prenom : seul le navigateur reconnu comme
+    // organisateur (cookie verifie cote serveur) recoit cette info.
+    prenomOrganisateur: <%- JSON.stringify(estOrganisateur ? evenement.createurPrenom : null) %>,
   };
 </script>
 <script src="/js/copier.js"></script>

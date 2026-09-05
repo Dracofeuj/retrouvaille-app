@@ -2,7 +2,7 @@
 // et les enregistrer, sans jamais recharger la page pour ca.
 
 (function () {
-  const { evenementId } = window.DONNEES_SORTIE;
+  const { evenementId, prenomOrganisateur } = window.DONNEES_SORTIE;
   const cleLocalStorage = `retrouvailles:prenom:${evenementId}`;
 
   const champPrenom = document.getElementById('champ-prenom');
@@ -32,8 +32,10 @@
     }
   }
 
-  // Au chargement : reprendre le prenom deja utilise sur ce navigateur, s'il y en a un.
-  const prenomMemorise = window.localStorage.getItem(cleLocalStorage);
+  // Au chargement : reprendre le prenom deja utilise sur ce navigateur pour
+  // voter, sinon (si ce navigateur est reconnu comme celui de l'organisateur)
+  // pre-remplir avec son prenom de createur.
+  const prenomMemorise = window.localStorage.getItem(cleLocalStorage) || prenomOrganisateur;
   if (prenomMemorise) {
     champPrenom.value = prenomMemorise;
     chargerDisposExistantes(prenomMemorise);
