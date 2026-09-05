@@ -30,17 +30,18 @@
 
   <div class="champ">
     <span id="etiquette-calendrier-creation">Touche les jours qui t'intéressent. Ils passent en jaune.</span>
-    <div class="calendrier" id="calendrier-creation">
-      <% joursCreation.forEach(function(j) { %>
-        <% if (j.premierDuMois) { %><div class="entete-mois"><%= j.moisLabel %></div><% } %>
-        <button type="button" class="case-jour" data-jour="<%= j.jour %>">
-          <span class="case-jour-semaine"><%= j.jourSemaine %></span>
-          <span class="case-jour-nombre"><%= j.jourNombre %></span>
-        </button>
-      <% }) %>
+    <div class="calendrier-nav">
+      <button type="button" id="bouton-mois-precedent" aria-label="Mois précédent">‹</button>
+      <span id="libelle-mois-affiche"></span>
+      <button type="button" id="bouton-mois-suivant" aria-label="Mois suivant">›</button>
     </div>
+    <div class="grille-jours-semaine">
+      <span>lun</span><span>mar</span><span>mer</span><span>jeu</span><span>ven</span><span>sam</span><span>dim</span>
+    </div>
+    <div class="grille-mois" id="calendrier-creation"></div>
   </div>
 
+  <input type="hidden" id="champ-aujourdhui" value="<%= debutParDefaut %>" />
   <div id="conteneur-champs-caches"></div>
 
   <button type="submit" class="bouton bouton-principal bouton-pleine-largeur">Créer la sortie</button>

@@ -455,6 +455,85 @@ body {
   color: var(--blanc);
 }
 
+/* Calendrier mensuel navigable (formulaire de creation) */
+
+.calendrier-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10px 0 8px;
+}
+
+.calendrier-nav button {
+  border: 1px solid var(--gris-200);
+  background: var(--blanc);
+  color: var(--gris-700);
+  border-radius: var(--rayon-petit);
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.calendrier-nav button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+#libelle-mois-affiche {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.grille-jours-semaine {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--gris-500);
+  text-transform: uppercase;
+}
+
+.grille-mois {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.case-jour-mois {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--rayon-petit);
+  background: var(--blanc);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--gris-950);
+  cursor: pointer;
+  padding: 0;
+}
+
+.case-jour-mois-vide {
+  visibility: hidden;
+}
+
+.case-jour-mois-desactivee {
+  color: var(--gris-500);
+  background: var(--gris-100);
+  cursor: default;
+}
+
+.case-jour-mois-selectionnee {
+  background: var(--jaune-selection);
+  border-color: var(--ambre-3);
+}
+
 .lien-discret {
   text-align: center;
   margin-top: 20px;

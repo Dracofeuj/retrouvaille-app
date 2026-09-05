@@ -5,7 +5,7 @@
 const express = require('express');
 const prisma = require('./lib/db');
 const semerDonneesDemo = require('./prisma/seed');
-const { aujourdhui, ajouterJours, listeDesJours, formaterJourLong, formaterJourCourt, construireJoursAffiches } = require('./lib/dates');
+const { aujourdhui, listeDesJours, formaterJourLong, formaterJourCourt, construireJoursAffiches } = require('./lib/dates');
 const { calculerHeatmap, niveauIntensite } = require('./lib/heatmap');
 const { estOrganisateurPourEvenement, definirCookieOrganisateur } = require('./lib/organisateur');
 
@@ -35,14 +35,10 @@ async function obtenirJoursVotables(evenement) {
 
 // ---------- Page d'accueil : creer une sortie ----------
 
-const JOURS_FENETRE_CREATION = 90; // ~3 mois de calendrier propose a la creation
-
 async function donneesAccueil(erreur) {
   const debutParDefaut = aujourdhui();
-  const finParDefaut = ajouterJours(debutParDefaut, 27); // 4 semaines
   const exemples = erreur ? [] : await prisma.evenement.findMany({ orderBy: { createdAt: 'asc' }, take: 2 });
-  const joursCreation = construireJoursAffiches(listeDesJours(debutParDefaut, ajouterJours(debutParDefaut, JOURS_FENETRE_CREATION - 1)));
-  return { debutParDefaut, finParDefaut, erreur, exemples, joursCreation };
+  return { debutParDefaut, erreur, exemples };
 }
 
 app.get('/', async (req, res) => {
