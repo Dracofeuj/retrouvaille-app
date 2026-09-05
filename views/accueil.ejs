@@ -28,28 +28,20 @@
     <input type="text" name="createurPrenom" placeholder="Ton prénom" required maxlength="40" />
   </label>
 
-  <div id="section-dates-precises">
-    <p class="aide">Ajoute une ou plusieurs dates. Les invités indiqueront celles qui leur vont.</p>
-    <div id="liste-dates">
-      <label class="champ champ-date-precise">
-        <span>Date</span>
-        <input type="date" name="dates" value="<%= debutParDefaut %>" />
-      </label>
+  <div class="champ">
+    <span id="etiquette-calendrier-creation">Touche les jours qui t'intéressent. Ils passent en jaune.</span>
+    <div class="calendrier" id="calendrier-creation">
+      <% joursCreation.forEach(function(j) { %>
+        <% if (j.premierDuMois) { %><div class="entete-mois"><%= j.moisLabel %></div><% } %>
+        <button type="button" class="case-jour" data-jour="<%= j.jour %>">
+          <span class="case-jour-semaine"><%= j.jourSemaine %></span>
+          <span class="case-jour-nombre"><%= j.jourNombre %></span>
+        </button>
+      <% }) %>
     </div>
-    <button type="button" class="lien-comme-bouton" id="bouton-ajouter-date">+ Ajouter une date</button>
   </div>
 
-  <div id="section-calendrier-libre" hidden>
-    <label class="champ">
-      <span>Du</span>
-      <input type="date" name="dateDebut" value="<%= debutParDefaut %>" />
-    </label>
-
-    <label class="champ">
-      <span>Au</span>
-      <input type="date" name="dateFin" value="<%= finParDefaut %>" />
-    </label>
-  </div>
+  <div id="conteneur-champs-caches"></div>
 
   <button type="submit" class="bouton bouton-principal bouton-pleine-largeur">Créer la sortie</button>
 </form>

@@ -5,7 +5,7 @@
 const express = require('express');
 const prisma = require('./lib/db');
 const semerDonneesDemo = require('./prisma/seed');
-const { aujourdhui, ajouterJours, listeDesJours, formaterJourLong, formaterJourCourt, formaterPourCase, nomMoisAnnee } = require('./lib/dates');
+const { aujourdhui, ajouterJours, listeDesJours, formaterJourLong, formaterJourCourt, construireJoursAffiches } = require('./lib/dates');
 const { calculerHeatmap, niveauIntensite } = require('./lib/heatmap');
 const { estOrganisateurPourEvenement, definirCookieOrganisateur } = require('./lib/organisateur');
 
@@ -35,11 +35,18 @@ async function obtenirJoursVotables(evenement) {
 
 // ---------- Page d'accueil : creer une sortie ----------
 
-app.get('/', async (req, res) => {
+const JOURS_FENETRE_CREATION = 90; // ~3 mois de calendrier propose a la creation
+
+async function donneesAccueil(erreur) {
   const debutParDefaut = aujourdhui();
   const finParDefaut = ajouterJours(debutParDefaut, 27); // 4 semaines
-  const exemples = await prisma.evenement.findMany({ orderBy: { createdAt: 'asc' }, take: 2 });
-  res.render('accueil', { debutParDefaut, finParDefaut, erreur: null, exemples });
+  const exemples = erreur ? [] : await prisma.evenement.findMany({ orderBy: { createdAt: 'asc' }, take: 2 });
+  const joursCreation = construireJoursAffiches(listeDesJours(debutParDefaut, ajouterJours(debutParDefaut, JOURS_FENETRE_CREATION - 1)));
+  return { debutParDefaut, finParDefaut, erreur, exemples, joursCreation };
+}
+
+app.get('/', async (req, res) => {
+  res.render('accueil', await donneesAccueil(null));
 });
 
 app.post('/evenements', async (req, res) => {
@@ -47,10 +54,8 @@ app.post('/evenements', async (req, res) => {
   const createurPrenom = (req.body.createurPrenom || '').trim();
   const mode = req.body.mode === 'calendrier_libre' ? 'calendrier_libre' : 'dates_precises';
 
-  function erreurCreation(message) {
-    const debutParDefaut = aujourdhui();
-    const finParDefaut = ajouterJours(debutParDefaut, 27);
-    return res.status(400).render('accueil', { debutParDefaut, finParDefaut, erreur: message, exemples: [] });
+  async function erreurCreation(message) {
+    res.status(400).render('accueil', await donneesAccueil(message));
   }
 
   if (!titre) return erreurCreation('Merci de donner un titre a la sortie.');
@@ -124,25 +129,14 @@ app.get('/e/:id', async (req, res) => {
 
   const { compte, totalParticipants, maxCompte, meilleursJours } = calculerHeatmap(joursPeriode, participants);
 
-  let dernierMoisAffiche = null;
-  const joursAffiches = joursPeriode.map((jour) => {
-    const moisLabel = nomMoisAnnee(jour);
-    const premierDuMois = moisLabel !== dernierMoisAffiche;
-    dernierMoisAffiche = moisLabel;
-    const { jourSemaine, jourNombre } = formaterPourCase(jour);
-    return {
-      jour,
-      libelleCourt: formaterJourCourt(jour),
-      jourSemaine,
-      jourNombre,
-      nombreDispos: compte[jour],
-      intensite: niveauIntensite(compte[jour], maxCompte),
-      estMeilleur: meilleursJours.includes(jour),
-      estValide: evenement.jourValide === jour,
-      moisLabel,
-      premierDuMois,
-    };
-  });
+  const joursAffiches = construireJoursAffiches(joursPeriode).map((j) => ({
+    ...j,
+    libelleCourt: formaterJourCourt(j.jour),
+    nombreDispos: compte[j.jour],
+    intensite: niveauIntensite(compte[j.jour], maxCompte),
+    estMeilleur: meilleursJours.includes(j.jour),
+    estValide: evenement.jourValide === j.jour,
+  }));
 
   const datesEnAttente =
     evenement.mode === 'dates_precises'
