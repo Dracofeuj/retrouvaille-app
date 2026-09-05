@@ -2,9 +2,12 @@
 <%- include('partials/head') %>
 
 <div class="entete-sortie">
-  <h1 class="titre-app titre-sortie"><%= evenement.titre %></h1>
+  <div>
+    <h1 class="titre-app titre-sortie"><%= evenement.titre %></h1>
+    <p class="organise-par">Organisé par <%= evenement.createurPrenom %></p>
+  </div>
   <% if (estOrganisateur) { %>
-    <p class="badge-role">Vue organisateur</p>
+    <p class="badge-role">Organisateur</p>
   <% } %>
 </div>
 
@@ -14,7 +17,6 @@
   </div>
 <% } %>
 
-<% if (!estOrganisateur) { %>
 <section class="carte" id="section-mes-dispos">
   <h2 class="titre-section">Mes disponibilités</h2>
 
@@ -39,8 +41,18 @@
     Enregistrer mes disponibilités
   </button>
   <p class="message-etat" id="message-etat"></p>
+
+  <% if (evenement.mode === 'dates_precises') { %>
+    <form method="post" action="/e/<%= evenement.id %>/contre-proposition" id="formulaire-contre-proposition" class="bloc-contre-proposition">
+      <p class="aide">Aucune de ces dates ne te va ? Propose-en une autre :</p>
+      <div class="ligne-contre-proposition">
+        <input type="date" name="jour" required />
+        <input type="hidden" name="prenom" id="champ-prenom-contre-proposition" />
+        <button type="submit" class="bouton bouton-secondaire">Proposer</button>
+      </div>
+    </form>
+  <% } %>
 </section>
-<% } %>
 
 <section class="carte">
   <h2 class="titre-section">Vue du groupe</h2>
@@ -72,13 +84,32 @@
   <% } %>
 </section>
 
+<% if (estOrganisateur && datesEnAttente && datesEnAttente.length > 0) { %>
+<section class="carte">
+  <h2 class="titre-section">Contre-propositions en attente</h2>
+  <% datesEnAttente.forEach(function(dp) { %>
+    <div class="ligne-attente">
+      <span class="ligne-attente-texte"><%= formaterJourLong(dp.jour) %><br><span class="ligne-attente-auteur">proposé par <%= dp.proposeParPrenom %></span></span>
+      <div class="boutons-attente">
+        <form method="post" action="/e/<%= evenement.id %>/dates-proposees/<%= dp.id %>/accepter">
+          <button type="submit" class="bouton-pastille bouton-pastille-accepter">Accepter</button>
+        </form>
+        <form method="post" action="/e/<%= evenement.id %>/dates-proposees/<%= dp.id %>/refuser">
+          <button type="submit" class="bouton-pastille bouton-pastille-refuser">Refuser</button>
+        </form>
+      </div>
+    </div>
+  <% }) %>
+</section>
+<% } %>
+
 <% if (estOrganisateur && evenement.statut !== 'confirme') { %>
 <section class="carte">
   <h2 class="titre-section">Valider le jour retenu</h2>
   <% if (totalParticipants === 0) { %>
     <p class="aide">Attends au moins un vote avant de valider un jour.</p>
   <% } else { %>
-    <form method="post" action="/o/<%= evenement.jetonOrganisateur %>/valider">
+    <form method="post" action="/e/<%= evenement.id %>/valider">
       <label class="champ">
         <span>Jour à confirmer</span>
         <select name="jour" required>
@@ -95,13 +126,11 @@
 </section>
 <% } %>
 
-<% if (!estOrganisateur) { %>
 <p class="lien-discret">
   <button type="button" class="lien-comme-bouton" id="bouton-copier-partage" data-lien="<%= lienPartage %>">
     Copier le lien de cette sortie pour inviter quelqu'un d'autre
   </button>
 </p>
-<% } %>
 
 <script>
   window.DONNEES_SORTIE = {
@@ -110,5 +139,5 @@
   };
 </script>
 <script src="/js/copier.js"></script>
-<% if (!estOrganisateur) { %><script src="/js/sortie.js"></script><% } %>
+<script src="/js/sortie.js"></script>
 <%- include('partials/foot') %>

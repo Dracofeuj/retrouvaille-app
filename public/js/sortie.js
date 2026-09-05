@@ -58,6 +58,21 @@
     appliquerSelectionAuCalendrier();
   });
 
+  const formulaireContreProposition = document.getElementById('formulaire-contre-proposition');
+  if (formulaireContreProposition) {
+    formulaireContreProposition.addEventListener('submit', (evenementSubmit) => {
+      const prenom = champPrenom.value.trim();
+      if (!prenom) {
+        evenementSubmit.preventDefault();
+        messageEtat.textContent = 'Indique ton prénom avant de proposer une date.';
+        messageEtat.classList.add('message-erreur');
+        champPrenom.focus();
+        return;
+      }
+      document.getElementById('champ-prenom-contre-proposition').value = prenom;
+    });
+  }
+
   boutonEnregistrer.addEventListener('click', async () => {
     const prenom = champPrenom.value.trim();
     if (!prenom) {

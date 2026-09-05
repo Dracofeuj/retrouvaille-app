@@ -12,16 +12,39 @@ datasource db {
 
 // Une sortie proposee par un organisateur.
 model Evenement {
-  id                String   @id @default(cuid())
-  titre             String
-  dateDebut         String // format AAAA-MM-JJ (simple date, sans heure/fuseau)
-  dateFin           String // format AAAA-MM-JJ
-  statut            String   @default("en_cours") // "en_cours" ou "confirme"
-  jourValide        String? // format AAAA-MM-JJ, rempli quand confirme
-  jetonOrganisateur String   @unique @default(cuid()) // lien secret pour valider
-  createdAt         DateTime @default(now())
+  id            String   @id @default(cuid())
+  titre         String
+  mode          String   @default("dates_precises") // "dates_precises" ou "calendrier_libre"
+  dateDebut     String // format AAAA-MM-JJ (simple date, sans heure/fuseau)
+  dateFin       String // format AAAA-MM-JJ
+  statut        String   @default("en_cours") // "en_cours" ou "confirme"
+  jourValide    String? // format AAAA-MM-JJ, rempli quand confirme
+  createurPrenom String
+  // Jeton compare au cookie pose sur le navigateur du createur pour le
+  // reconnaitre comme organisateur (voir lib/organisateur.js). Plus tard,
+  // avec des comptes, ce role pourra s'appuyer sur un userId a la place.
+  jetonCreateur String   @unique @default(cuid())
+  createdAt     DateTime @default(now())
 
-  participants Participant[]
+  participants   Participant[]
+  datesProposees DateProposee[]
+}
+
+// Une date precise, utilisee seulement en mode "dates_precises". Les dates
+// proposees par le createur a la creation sont deja "validee" ; celles
+// proposees par un invite en contre-proposition arrivent "en_attente"
+// jusqu'a ce que l'organisateur les accepte.
+model DateProposee {
+  id               String   @id @default(cuid())
+  evenementId      String
+  jour             String // format AAAA-MM-JJ
+  statut           String   @default("validee") // "validee" ou "en_attente"
+  proposeParPrenom String?
+  createdAt        DateTime @default(now())
+
+  evenement Evenement @relation(fields: [evenementId], references: [id], onDelete: Cascade)
+
+  @@unique([evenementId, jour])
 }
 
 // Une personne qui a vote sur une sortie (invite : juste un prenom, pas de compte).

@@ -2,12 +2,21 @@
 <%- include('partials/head') %>
 
 <h1 class="titre-app">Retrouvailles</h1>
-<p class="sous-titre">Propose une sortie, tout le monde vote ses jours dispo, le meilleur jour ressort tout seul.</p>
+<p class="sous-titre">Propose une sortie, tout le monde vote, le meilleur jour ressort tout seul.</p>
 
-<form class="carte" method="post" action="/evenements">
+<form class="carte" method="post" action="/evenements" id="formulaire-creation">
   <% if (erreur) { %>
     <p class="message-erreur"><%= erreur %></p>
   <% } %>
+
+  <div class="champ">
+    <span>Comment veux-tu proposer la sortie ?</span>
+    <div class="bascule-mode">
+      <button type="button" class="bouton-mode bouton-mode-actif" data-mode="dates_precises">Je propose des dates</button>
+      <button type="button" class="bouton-mode" data-mode="calendrier_libre">Calendrier ouvert</button>
+    </div>
+    <input type="hidden" name="mode" id="champ-mode" value="dates_precises" />
+  </div>
 
   <label class="champ">
     <span>Titre de la sortie</span>
@@ -15,20 +24,43 @@
   </label>
 
   <label class="champ">
-    <span>Du</span>
-    <input type="date" name="dateDebut" value="<%= debutParDefaut %>" required />
+    <span>Ton prénom</span>
+    <input type="text" name="createurPrenom" placeholder="Ton prénom" required maxlength="40" />
   </label>
 
-  <label class="champ">
-    <span>Au</span>
-    <input type="date" name="dateFin" value="<%= finParDefaut %>" required />
-  </label>
+  <div id="section-dates-precises">
+    <p class="aide">Ajoute une ou plusieurs dates. Les invités indiqueront celles qui leur vont.</p>
+    <div id="liste-dates">
+      <label class="champ champ-date-precise">
+        <span>Date</span>
+        <input type="date" name="dates" value="<%= debutParDefaut %>" />
+      </label>
+    </div>
+    <button type="button" class="lien-comme-bouton" id="bouton-ajouter-date">+ Ajouter une date</button>
+  </div>
 
-  <button type="submit" class="bouton bouton-principal">Créer la sortie</button>
+  <div id="section-calendrier-libre" hidden>
+    <label class="champ">
+      <span>Du</span>
+      <input type="date" name="dateDebut" value="<%= debutParDefaut %>" />
+    </label>
+
+    <label class="champ">
+      <span>Au</span>
+      <input type="date" name="dateFin" value="<%= finParDefaut %>" />
+    </label>
+  </div>
+
+  <button type="submit" class="bouton bouton-principal bouton-pleine-largeur">Créer la sortie</button>
 </form>
 
-<% if (idExemple) { %>
-  <p class="lien-discret"><a href="/e/<%= idExemple %>">Voir un exemple avec des votes déjà remplis</a></p>
+<% if (exemples && exemples.length > 0) { %>
+  <% exemples.forEach(function(ex) { %>
+    <p class="lien-discret">
+      <a href="/e/<%= ex.id %>">Voir un exemple<%= ex.mode === 'calendrier_libre' ? ' (calendrier ouvert)' : ' (dates précises)' %></a>
+    </p>
+  <% }) %>
 <% } %>
 
+<script src="/js/accueil.js"></script>
 <%- include('partials/foot') %>

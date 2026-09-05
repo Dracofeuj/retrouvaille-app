@@ -1,6 +1,6 @@
-// Cree une sortie de demonstration avec quelques votes deja remplis, pour
-// qu'on voie tout de suite un resultat a l'ouverture de l'app.
-// Ne fait rien si une sortie existe deja (pour ne pas dupliquer a chaque
+// Cree deux sorties de demonstration (une par mode) avec quelques votes deja
+// remplis, pour qu'on voie tout de suite un resultat a l'ouverture de l'app.
+// Ne fait rien si des sorties existent deja (pour ne pas dupliquer a chaque
 // demarrage du serveur).
 
 const prisma = require('../lib/db');
@@ -13,44 +13,79 @@ async function semerDonneesDemo() {
   }
 
   const debut = aujourdhui();
-  const fin = ajouterJours(debut, 27); // 4 semaines
 
-  const evenement = await prisma.evenement.create({
+  // ----- Demo 1 : mode "calendrier ouvert" (comme la toute premiere version) -----
+  const finCalendrier = ajouterJours(debut, 27); // 4 semaines
+  const evenementCalendrier = await prisma.evenement.create({
     data: {
-      titre: 'Dispo pour un verre ? (exemple)',
+      titre: 'Dispo pour un verre ? (exemple calendrier ouvert)',
+      mode: 'calendrier_libre',
+      createurPrenom: 'Camille',
       dateDebut: debut,
-      dateFin: fin,
+      dateFin: finCalendrier,
     },
   });
 
-  // Quelques jours types dans la periode, pour repartir les votes de demo.
   const j3 = ajouterJours(debut, 3);
   const j4 = ajouterJours(debut, 4);
   const j5 = ajouterJours(debut, 5);
   const j10 = ajouterJours(debut, 10);
   const j11 = ajouterJours(debut, 11);
 
-  const votes = [
+  for (const vote of [
     { prenom: 'Alex', jours: [j3, j4, j10] },
     { prenom: 'Camille', jours: [j4, j5, j10, j11] },
     { prenom: 'Sacha', jours: [j4, j10] },
-  ];
-
-  for (const vote of votes) {
+  ]) {
     await prisma.participant.create({
       data: {
-        evenementId: evenement.id,
+        evenementId: evenementCalendrier.id,
         prenom: vote.prenom,
-        dispos: {
-          create: vote.jours.map((jour) => ({ jour })),
-        },
+        dispos: { create: vote.jours.map((jour) => ({ jour })) },
+      },
+    });
+  }
+
+  // ----- Demo 2 : mode "dates precises", avec une contre-proposition en attente -----
+  const d1 = ajouterJours(debut, 12);
+  const d2 = ajouterJours(debut, 17);
+  const d3 = ajouterJours(debut, 27);
+  const dContreProposition = ajouterJours(debut, 32);
+
+  const evenementDatesPrecises = await prisma.evenement.create({
+    data: {
+      titre: 'Repas de rentree (exemple dates precises)',
+      mode: 'dates_precises',
+      createurPrenom: 'Maxence',
+      dateDebut: d1,
+      dateFin: d3,
+      datesProposees: {
+        create: [
+          { jour: d1, statut: 'validee' },
+          { jour: d2, statut: 'validee' },
+          { jour: d3, statut: 'validee' },
+          { jour: dContreProposition, statut: 'en_attente', proposeParPrenom: 'Jacques' },
+        ],
+      },
+    },
+  });
+
+  for (const vote of [
+    { prenom: 'Maxence', jours: [d1, d2, d3] },
+    { prenom: 'Alex', jours: [d2, d3] },
+  ]) {
+    await prisma.participant.create({
+      data: {
+        evenementId: evenementDatesPrecises.id,
+        prenom: vote.prenom,
+        dispos: { create: vote.jours.map((jour) => ({ jour })) },
       },
     });
   }
 
   console.log('Donnees de demo creees :');
-  console.log(`  Lien de partage   : /e/${evenement.id}`);
-  console.log(`  Lien organisateur : /o/${evenement.jetonOrganisateur}`);
+  console.log(`  Calendrier ouvert : /e/${evenementCalendrier.id}`);
+  console.log(`  Dates precises    : /e/${evenementDatesPrecises.id}`);
 }
 
 module.exports = semerDonneesDemo;

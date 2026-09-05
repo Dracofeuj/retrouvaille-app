@@ -11,10 +11,12 @@
   --gris-100: #f2f4f6;
   --blanc: #ffffff;
 
+  --jaune-selection: #fcd34d; /* couleur fixe pour "mes disponibilites" */
   --ambre-1: #fef3c7;
-  --ambre-2: #fcd34d;
-  --ambre-3: #f5a623;
-  --ambre-4: #d9770a;
+  --ambre-2: #fde68a;
+  --ambre-3: #fbbf24;
+  --ambre-4: #f59e0b;
+  --ambre-5: #b45309;
 
   --vert: #2fae5c;
   --vert-clair: #e3f6e9;
@@ -69,6 +71,12 @@ body {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.organise-par {
+  font-size: 13px;
+  color: var(--gris-700);
+  margin: 0;
 }
 
 .badge-role {
@@ -233,7 +241,7 @@ body {
 }
 
 .case-jour-selectionnee {
-  background: var(--ambre-2);
+  background: var(--jaune-selection);
   border-color: var(--ambre-3);
 }
 
@@ -263,7 +271,11 @@ body {
 .intensite-4 { background: var(--ambre-4); border-color: var(--ambre-4); }
 .intensite-4 .case-jour-semaine,
 .intensite-4 .case-jour-nombre,
-.intensite-4 .case-jour-compte { color: var(--blanc); }
+.intensite-4 .case-jour-compte { color: #3d2600; }
+.intensite-5 { background: var(--ambre-5); border-color: var(--ambre-5); }
+.intensite-5 .case-jour-semaine,
+.intensite-5 .case-jour-nombre,
+.intensite-5 .case-jour-compte { color: var(--blanc); }
 
 .case-jour-meilleure {
   outline: 2px solid var(--accent);
@@ -279,6 +291,84 @@ body {
 .case-jour-validee .case-jour-nombre,
 .case-jour-validee .case-jour-compte {
   color: var(--blanc);
+}
+
+/* Contre-proposition (mode dates precises) */
+
+.bloc-contre-proposition {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--gris-200);
+}
+
+.ligne-contre-proposition {
+  display: flex;
+  gap: 8px;
+}
+
+.ligne-contre-proposition input[type="date"] {
+  flex: 1;
+  font-size: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--rayon-petit);
+}
+
+.bouton-secondaire {
+  background: var(--blanc);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  flex-shrink: 0;
+}
+
+.ligne-attente {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--gris-200);
+}
+
+.ligne-attente:last-child {
+  border-bottom: none;
+}
+
+.ligne-attente-texte {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ligne-attente-auteur {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--gris-700);
+}
+
+.boutons-attente {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.bouton-pastille {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.bouton-pastille-accepter {
+  background: var(--vert-clair);
+  color: #1c6b3a;
+}
+
+.bouton-pastille-refuser {
+  background: #fbe9e7;
+  color: var(--rouge);
 }
 
 .liste-participants {
@@ -335,6 +425,65 @@ body {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* Bascule de mode (creation de sortie) */
+
+.bascule-mode {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 16px;
+}
+
+.bouton-mode {
+  flex: 1;
+  border: 1px solid var(--gris-200);
+  background: var(--blanc);
+  color: var(--gris-700);
+  border-radius: var(--rayon-petit);
+  padding: 12px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: center;
+}
+
+.bouton-mode-actif {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--blanc);
+}
+
+.champ-date-precise {
+  margin-bottom: 10px;
+}
+
+.ligne-date-avec-suppression {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ligne-date-avec-suppression input {
+  flex: 1;
+}
+
+.bouton-supprimer-date {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--gris-200);
+  background: var(--blanc);
+  color: var(--gris-700);
+  border-radius: var(--rayon-petit);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+#bouton-ajouter-date {
+  margin: 4px 0 20px;
+  display: inline-block;
 }
 
 .lien-discret {

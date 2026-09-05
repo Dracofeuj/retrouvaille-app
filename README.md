@@ -1,14 +1,14 @@
 # Retrouvailles — boucle de vote
 
 Application web pour caler une sortie entre amis : un organisateur propose
-une sortie, chacun peint ses jours de disponibilité, le meilleur jour
-ressort tout seul, l'organisateur le valide. Pas de compte, pas de
-messagerie.
+une sortie (des dates précises, ou un calendrier ouvert), chacun vote ses
+disponibilités, le meilleur jour ressort tout seul, l'organisateur le
+valide. Pas de compte, pas de messagerie, un seul lien pour tout le monde.
 
-Cette version couvre **uniquement la boucle de vote** (créer une sortie,
-voter, voir le résultat, valider). Le reste du produit (comptes, groupes,
-albums photo...) est décrit dans `CONTEXTE-PRODUIT.md` mais n'est pas
-construit ici.
+Cette version couvre **uniquement la boucle de vote** (créer une sortie
+dans l'un des deux modes, voter, contre-proposer une date, voir le résultat,
+valider). Le reste du produit (comptes, groupes, albums photo...) est décrit
+dans `CONTEXTE-PRODUIT.md` mais n'est pas construit ici.
 
 ## Lancer le projet en local
 
@@ -43,26 +43,52 @@ server.js              routes de l'application (une route = une page ou une acti
 prisma/schema.prisma    structure de la base de données
 prisma/seed.js          creation des donnees de demonstration
 lib/dates.js            manipulation des dates (format AAAA-MM-JJ, sans fuseau horaire)
-lib/heatmap.js          calcul du "meilleur jour" a partir des votes
+lib/heatmap.js          calcul du "meilleur jour" et du degrade de couleurs
+lib/organisateur.js     reconnaissance du createur via un cookie (lien unique)
 lib/db.js               connexion a la base de donnees (Prisma)
 views/                  pages HTML (moteur de template EJS)
 public/css/style.css    tout le style visuel
-public/js/              interactivite cote navigateur (peindre les jours, copier un lien)
+public/js/              interactivite cote navigateur (peindre les jours, copier un lien, formulaire de creation)
 ```
 
 ## Modèle de données
 
-- **Evenement** : titre, période (`dateDebut`/`dateFin`), statut
-  (`en_cours`/`confirme`), `jourValide`, et `jetonOrganisateur` (le secret
-  qui donne le droit de valider un jour).
+- **Evenement** : titre, `mode` (`dates_precises` ou `calendrier_libre`),
+  période (`dateDebut`/`dateFin`), statut (`en_cours`/`confirme`),
+  `jourValide`, `createurPrenom`, et `jetonCreateur` (comparé au cookie posé
+  sur le navigateur du créateur pour le reconnaître comme organisateur).
 - **Participant** : un prénom rattaché à un événement (un invité, sans compte).
 - **Dispo** : un jour où un participant a dit être disponible.
+- **DateProposee** : utilisée seulement en mode `dates_precises` — une date
+  avec un statut (`validee` ou `en_attente`) et qui l'a proposée
+  (`proposeParPrenom`). Les dates de départ sont `validee` d'emblée ; une
+  contre-proposition d'invité arrive `en_attente` jusqu'à ce que
+  l'organisateur l'accepte.
 
-Le meilleur jour = celui qui a le plus de lignes `Dispo`. Aucun calcul compliqué.
+Le meilleur jour = celui qui a le plus de lignes `Dispo`. Le dégradé de
+couleurs de la vue de groupe est calculé par rapport à ce maximum (pas par
+rapport au nombre total d'inscrits), sur 5 paliers — voir `lib/heatmap.js`.
 
 Toutes les dates sont stockées comme de simples chaînes `AAAA-MM-JJ` (pas
 de type date avec heure/fuseau), pour éviter les décalages d'un jour selon
 le fuseau horaire du visiteur ou du serveur.
+
+## Lien unique et reconnaissance de l'organisateur
+
+Il n'y a plus qu'un seul lien par sortie (`/e/:id`). Au moment de la
+création, le serveur pose un cookie (`org_<id>`, invisible, "HttpOnly") sur
+le navigateur du créateur, contenant le `jetonCreateur` de l'événement. À
+chaque visite de `/e/:id`, le serveur compare ce cookie au jeton stocké en
+base (`lib/organisateur.js`) : s'ils correspondent, la personne voit les
+actions d'organisateur (valider le jour, accepter/refuser une
+contre-proposition).
+
+**Limite assumée** : ça ne marche que sur le même appareil/navigateur — si
+le créateur change d'appareil ou vide son navigateur, il perd ce statut. La
+reconnaissance fiable sur tous les appareils viendra avec les comptes
+utilisateur (tranche suivante) ; le code est écrit pour qu'on puisse alors
+ajouter une vérification par compte (`evenement.createurUserId`) à côté du
+cookie, sans rien casser.
 
 ## Passer de SQLite à PostgreSQL plus tard
 
