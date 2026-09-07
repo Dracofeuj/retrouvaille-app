@@ -23,7 +23,7 @@
   ];
 
   const ETIQUETTES = {
-    dates_precises: "Touche les jours qui t'intéressent. Ils passent en jaune.",
+    dates_precises: 'Touche les jours qui te tentent, ils passent en jaune.',
     calendrier_libre: 'Touche le premier jour, puis le dernier jour de la période (comme pour réserver un billet d\'avion).',
   };
 

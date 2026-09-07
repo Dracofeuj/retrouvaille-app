@@ -2,7 +2,7 @@
 <%- include('partials/head') %>
 
 <h1 class="titre-app">Retrouvailles</h1>
-<p class="sous-titre">Propose une sortie, tout le monde vote, le meilleur jour ressort tout seul.</p>
+<p class="sous-titre">On propose, on vote, et cette fois on se voit vraiment.</p>
 
 <form class="carte" method="post" action="/evenements" id="formulaire-creation">
   <% if (erreur) { %>
@@ -10,10 +10,10 @@
   <% } %>
 
   <div class="champ">
-    <span>Comment veux-tu proposer la sortie ?</span>
+    <span>Comment on fait ?</span>
     <div class="bascule-mode">
-      <button type="button" class="bouton-mode bouton-mode-actif" data-mode="dates_precises">Je propose des dates</button>
-      <button type="button" class="bouton-mode" data-mode="calendrier_libre">Calendrier ouvert</button>
+      <button type="button" class="bouton-mode bouton-mode-actif" data-mode="dates_precises">Des dates précises</button>
+      <button type="button" class="bouton-mode" data-mode="calendrier_libre">Un calendrier ouvert</button>
     </div>
     <input type="hidden" name="mode" id="champ-mode" value="dates_precises" />
   </div>
@@ -29,7 +29,7 @@
   </label>
 
   <div class="champ">
-    <span id="etiquette-calendrier-creation">Touche les jours qui t'intéressent. Ils passent en jaune.</span>
+    <span id="etiquette-calendrier-creation">Touche les jours qui te tentent, ils passent en jaune.</span>
     <div class="calendrier-nav">
       <button type="button" id="bouton-mois-precedent" aria-label="Mois précédent">‹</button>
       <span id="libelle-mois-affiche"></span>
@@ -72,7 +72,7 @@
     <button type="button" class="lien-comme-bouton" id="bouton-ajouter-lieu">+ Ajouter un lieu</button>
   </div>
 
-  <button type="submit" class="bouton bouton-principal bouton-pleine-largeur">Créer la sortie</button>
+  <button type="submit" class="bouton bouton-principal bouton-pleine-largeur">On lance la sortie</button>
 </form>
 
 <% if (exemples && exemples.length > 0) { %>

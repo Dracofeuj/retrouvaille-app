@@ -13,12 +13,7 @@
 
 <% if (evenement.statut === 'confirme') { %>
   <div class="bandeau-confirme">
-    ✅ Sortie confirmée pour le <strong><%= formaterJourLong(evenement.jourValide) %></strong>
-  </div>
-<% } %>
-<% if (evenement.lieuValideId) { %>
-  <div class="bandeau-confirme">
-    📍 Lieu confirmé : <strong><%= lieuxListe.find(function(l){ return l.id === evenement.lieuValideId }).nom %></strong>
+    ✅ <%= texteValidation %>
   </div>
 <% } %>
 
@@ -43,7 +38,7 @@
   </div>
 
   <% if (lieuxListe.length > 0) { %>
-    <p class="aide">Quel(s) lieu(x) te vont ?</p>
+    <p class="aide">Quels lieux te vont ?</p>
     <div class="pilules-lieux" id="pilules-lieux-perso">
       <% lieuxListe.forEach(function(l) { %>
         <button type="button" class="pilule-lieu" data-lieu="<%= l.id %>"><%= l.nom %></button>
@@ -58,7 +53,7 @@
 
   <% if (evenement.mode === 'dates_precises') { %>
     <form method="post" action="/e/<%= evenement.id %>/contre-proposition" id="formulaire-contre-proposition" class="bloc-contre-proposition">
-      <p class="aide">Aucune de ces dates ne te va ? Propose-en une autre :</p>
+      <p class="aide">Aucune date qui te branche ? Propose la tienne :</p>
       <div class="ligne-contre-proposition">
         <input type="date" name="jour" required />
         <input type="hidden" name="prenom" id="champ-prenom-contre-proposition" />
@@ -153,11 +148,11 @@
 
 <% if (estOrganisateur && evenement.statut !== 'confirme') { %>
 <section class="carte">
-  <h2 class="titre-section">Valider le jour retenu</h2>
+  <h2 class="titre-section">Valider la sortie</h2>
   <% if (totalParticipants === 0) { %>
-    <p class="aide">Attends au moins un vote avant de valider un jour.</p>
+    <p class="aide">Attends au moins un vote avant de valider.</p>
   <% } else { %>
-    <form method="post" action="/e/<%= evenement.id %>/valider">
+    <form method="post" action="/e/<%= evenement.id %>/valider-sortie">
       <label class="champ">
         <span>Jour à confirmer</span>
         <select name="jour" required>
@@ -168,35 +163,29 @@
           <% }) %>
         </select>
       </label>
-      <button type="submit" class="bouton bouton-valider bouton-pleine-largeur">Valider ce jour</button>
+      <% if (lieuxListe.length > 0) { %>
+        <label class="champ">
+          <span>Lieu à confirmer</span>
+          <select name="lieuId" required>
+            <% lieuxListe.forEach(function(l) { %>
+              <option value="<%= l.id %>" <%= l.estMeilleur ? 'selected' : '' %>>
+                <%= l.nom %> — <%= l.compteTexte %>
+              </option>
+            <% }) %>
+          </select>
+        </label>
+      <% } %>
+      <button type="submit" class="bouton bouton-valider bouton-pleine-largeur">Valider la sortie</button>
     </form>
   <% } %>
 </section>
 <% } %>
 
-<% if (estOrganisateur && lieuxListe.length > 0 && !evenement.lieuValideId) { %>
-<section class="carte">
-  <h2 class="titre-section">Valider le lieu retenu</h2>
-  <form method="post" action="/e/<%= evenement.id %>/valider-lieu">
-    <label class="champ">
-      <span>Lieu à confirmer</span>
-      <select name="lieuId" required>
-        <% lieuxListe.forEach(function(l) { %>
-          <option value="<%= l.id %>" <%= l.estMeilleur ? 'selected' : '' %>>
-            <%= l.nom %> — <%= l.compteTexte %>
-          </option>
-        <% }) %>
-      </select>
-    </label>
-    <button type="submit" class="bouton bouton-valider bouton-pleine-largeur">Valider ce lieu</button>
-  </form>
-</section>
-<% } %>
-
 <p class="lien-discret">
   <button type="button" class="lien-comme-bouton" id="bouton-copier-partage" data-lien="<%= lienPartage %>">
-    Copier le lien de cette sortie pour inviter quelqu'un d'autre
+    Copier le lien
   </button>
+  <span class="lien-sous-texte">pour inviter du monde</span>
 </p>
 
 <script>
@@ -206,8 +195,11 @@
     // Ne sert qu'a pre-remplir le prenom : seul le navigateur reconnu comme
     // organisateur (cookie verifie cote serveur) recoit cette info.
     prenomOrganisateur: <%- JSON.stringify(estOrganisateur ? evenement.createurPrenom : null) %>,
+    estConfirme: <%- JSON.stringify(evenement.statut === 'confirme') %>,
+    texteValidation: <%- JSON.stringify(texteValidation) %>,
   };
 </script>
 <script src="/js/copier.js"></script>
 <script src="/js/sortie.js"></script>
+<script src="/js/animation-validation.js"></script>
 <%- include('partials/foot') %>

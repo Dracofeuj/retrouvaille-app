@@ -204,6 +204,13 @@ app.get('/e/:id', async (req, res) => {
     orderBy: { createdAt: 'asc' },
   });
 
+  // Texte partage entre le bandeau permanent et l'animation de validation.
+  let texteValidation = null;
+  if (evenement.statut === 'confirme') {
+    const lieuValide = evenement.lieuValideId ? lieuxListe.find((l) => l.id === evenement.lieuValideId) : null;
+    texteValidation = `Rendez-vous le ${formaterJourLong(evenement.jourValide)}${lieuValide ? ` à ${lieuValide.nom}` : ''}`;
+  }
+
   res.render('sortie', {
     evenement,
     estOrganisateur,
@@ -216,6 +223,7 @@ app.get('/e/:id', async (req, res) => {
     lieuxEnAttente,
     formaterJourLong,
     formatCompteVotes,
+    texteValidation,
     plageHeures: formaterPlageHeures(evenement.heureDebut, evenement.heureFin),
     lienPartage: `${req.protocol}://${req.get('host')}/e/${evenement.id}`,
   });
@@ -411,15 +419,16 @@ app.post('/e/:id/lieux-proposes/:lieuProposeId/refuser', async (req, res) => {
   res.redirect(`/e/${evenement.id}`);
 });
 
-// ---------- Valider le jour et/ou le lieu retenu (organisateur uniquement) ----------
-// Les deux validations sont independantes : on peut valider la date sans
-// avoir encore choisi le lieu, et inversement.
+// ---------- Valider la sortie (date + lieu, organisateur uniquement) ----------
+// Une seule action qui verrouille le jour et, s'il y a des lieux proposes,
+// le lieu retenu en meme temps. Passe la sortie a l'etat "confirme", ce qui
+// declenche l'animation de validation cote client (voir public/js/animation-validation.js).
 
-app.post('/e/:id/valider', async (req, res) => {
+app.post('/e/:id/valider-sortie', async (req, res) => {
   const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
   if (!evenement) return res.status(404).send('Sortie introuvable.');
   if (!estOrganisateurPourEvenement(req, evenement)) {
-    return res.status(403).send('Seul l\'organisateur peut valider le jour retenu.');
+    return res.status(403).send('Seul l\'organisateur peut valider la sortie.');
   }
 
   const jour = req.body.jour;
@@ -428,30 +437,19 @@ app.post('/e/:id/valider', async (req, res) => {
     return res.status(400).send('Jour invalide.');
   }
 
-  await prisma.evenement.update({
-    where: { id: evenement.id },
-    data: { statut: 'confirme', jourValide: jour },
-  });
-
-  res.redirect(`/e/${evenement.id}`);
-});
-
-app.post('/e/:id/valider-lieu', async (req, res) => {
-  const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
-  if (!evenement) return res.status(404).send('Sortie introuvable.');
-  if (!estOrganisateurPourEvenement(req, evenement)) {
-    return res.status(403).send('Seul l\'organisateur peut valider le lieu retenu.');
-  }
-
-  const lieuId = req.body.lieuId;
-  const lieuxValides = new Set((await obtenirLieuxVotables(evenement)).map((l) => l.id));
-  if (!lieuId || !lieuxValides.has(lieuId)) {
-    return res.status(400).send('Lieu invalide.');
+  const lieuxVotables = await obtenirLieuxVotables(evenement);
+  let lieuValideId = null;
+  if (lieuxVotables.length > 0) {
+    const lieuxValides = new Set(lieuxVotables.map((l) => l.id));
+    if (!req.body.lieuId || !lieuxValides.has(req.body.lieuId)) {
+      return res.status(400).send('Lieu invalide.');
+    }
+    lieuValideId = req.body.lieuId;
   }
 
   await prisma.evenement.update({
     where: { id: evenement.id },
-    data: { lieuValideId: lieuId },
+    data: { statut: 'confirme', jourValide: jour, lieuValideId },
   });
 
   res.redirect(`/e/${evenement.id}`);
