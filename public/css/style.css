@@ -1,29 +1,39 @@
-/* Design sobre et mobile d'abord : blanc/gris, un seul bleu d'accent,
-   jaune/ambre pour les disponibilites, vert pour confirme. */
+/* Design neumorphique sombre : surfaces "embossees" sur un fond sombre
+   unique, ombres douces bicolores (sombre + claire), accent vert neon.
+   Disponibilite = jaune, meilleur/confirme = vert. Mobile d'abord. */
 
 :root {
-  --accent: #378ADD;
-  --accent-fonce: #2a6cb0;
-  --gris-950: #1a1d21;
-  --gris-700: #4a5157;
-  --gris-500: #8a9198;
-  --gris-200: #e4e7ea;
-  --gris-100: #f2f4f6;
-  --blanc: #ffffff;
+  color-scheme: dark;
 
-  --jaune-selection: #fcd34d; /* couleur fixe pour "mes disponibilites" */
-  --ambre-1: #fef3c7;
-  --ambre-2: #fde68a;
-  --ambre-3: #fbbf24;
-  --ambre-4: #f59e0b;
-  --ambre-5: #b45309;
+  --bg: #14161b;
+  --surface: #1b1e25;
+  --surface-haute: #20232b;
 
-  --vert: #2fae5c;
-  --vert-clair: #e3f6e9;
-  --rouge: #c0392b;
+  --texte: #e9ebf0;
+  --texte-att: #8f97a3;
 
-  --rayon: 14px;
-  --rayon-petit: 10px;
+  --accent: #6ee07a;
+  --accent-texte: #0a2010;
+  --accent-glow: rgba(110, 224, 122, 0.4);
+  --accent-fond: rgba(110, 224, 122, 0.12);
+
+  --jaune-selection: #f5c84c;
+  --jaune-texte: #241a02;
+  --jaune-fond: rgba(245, 200, 76, 0.18);
+
+  --rouge: #ff6b6b;
+  --rouge-fond: rgba(255, 107, 107, 0.14);
+
+  --ombre-sombre: rgba(0, 0, 0, 0.55);
+  --ombre-claire: rgba(255, 255, 255, 0.04);
+  --liseret: rgba(255, 255, 255, 0.06);
+
+  --ombre-elevee: 8px 8px 16px var(--ombre-sombre), -6px -6px 14px var(--ombre-claire);
+  --ombre-legere: 4px 4px 9px var(--ombre-sombre), -3px -3px 7px var(--ombre-claire);
+  --ombre-creuse: inset 5px 5px 10px var(--ombre-sombre), inset -4px -4px 8px var(--ombre-claire);
+
+  --rayon: 20px;
+  --rayon-petit: 14px;
 }
 
 * {
@@ -32,8 +42,8 @@
 
 body {
   margin: 0;
-  background: var(--gris-100);
-  color: var(--gris-950);
+  background: var(--bg);
+  color: var(--texte);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.4;
 }
@@ -48,6 +58,7 @@ body {
   font-size: 26px;
   font-weight: 700;
   margin: 0 0 6px;
+  color: var(--texte);
 }
 
 .titre-sortie {
@@ -55,12 +66,12 @@ body {
 }
 
 .sous-titre {
-  color: var(--gris-700);
+  color: var(--texte-att);
   margin: 0 0 24px;
 }
 
 .aide {
-  color: var(--gris-700);
+  color: var(--texte-att);
   font-size: 14px;
   margin: 0 0 16px;
 }
@@ -75,33 +86,35 @@ body {
 
 .organise-par {
   font-size: 13px;
-  color: var(--gris-700);
+  color: var(--texte-att);
   margin: 0;
 }
 
 .badge-role {
   background: var(--accent);
-  color: var(--blanc);
+  color: var(--accent-texte);
   font-size: 12px;
-  font-weight: 600;
-  padding: 4px 10px;
+  font-weight: 700;
+  padding: 5px 12px;
   border-radius: 999px;
   margin: 0;
   white-space: nowrap;
+  box-shadow: var(--ombre-legere), 0 0 12px var(--accent-glow);
 }
 
 .carte {
-  background: var(--blanc);
+  background: var(--surface);
   border-radius: var(--rayon);
   padding: 20px;
   margin-bottom: 20px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--ombre-elevee);
 }
 
 .titre-section {
   font-size: 17px;
   font-weight: 600;
   margin: 0 0 12px;
+  color: var(--texte);
 }
 
 .champ {
@@ -111,7 +124,7 @@ body {
   margin-bottom: 16px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--gris-700);
+  color: var(--texte-att);
 }
 
 .champ input,
@@ -119,11 +132,12 @@ body {
   font-size: 16px; /* evite le zoom automatique sur iPhone */
   font-family: inherit;
   font-weight: 400;
-  color: var(--gris-950);
+  color: var(--texte);
   padding: 12px 14px;
-  border: 1px solid var(--gris-200);
+  border: 1px solid var(--liseret);
   border-radius: var(--rayon-petit);
-  background: var(--blanc);
+  background: var(--surface);
+  box-shadow: var(--ombre-creuse);
   width: 100%;
 }
 
@@ -143,25 +157,35 @@ body {
   cursor: pointer;
   text-align: center;
   text-decoration: none;
+  background: var(--surface);
+  color: var(--texte);
+  box-shadow: var(--ombre-elevee);
+}
+
+.bouton:active {
+  box-shadow: var(--ombre-creuse);
 }
 
 .bouton-principal {
   background: var(--accent);
-  color: var(--blanc);
+  color: var(--accent-texte);
+  box-shadow: var(--ombre-elevee), 0 0 18px var(--accent-glow);
 }
 
 .bouton-principal:hover {
-  background: var(--accent-fonce);
+  filter: brightness(1.08);
 }
 
 .bouton-principal:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: default;
+  box-shadow: var(--ombre-legere);
 }
 
 .bouton-valider {
-  background: var(--vert);
-  color: var(--blanc);
+  background: var(--accent);
+  color: var(--accent-texte);
+  box-shadow: var(--ombre-elevee), 0 0 18px var(--accent-glow);
 }
 
 .bouton-pleine-largeur {
@@ -172,7 +196,7 @@ body {
 .message-etat {
   margin: 10px 0 0;
   font-size: 14px;
-  color: var(--gris-700);
+  color: var(--texte-att);
   min-height: 18px;
 }
 
@@ -182,12 +206,13 @@ body {
 }
 
 .bandeau-confirme {
-  background: var(--vert-clair);
-  color: #1c6b3a;
+  background: var(--accent-fond);
+  color: var(--accent);
   border-radius: var(--rayon-petit);
   padding: 14px 16px;
   margin-bottom: 20px;
   font-size: 15px;
+  box-shadow: var(--ombre-creuse);
 }
 
 /* Calendrier : grille de cases, une par jour */
@@ -203,7 +228,7 @@ body {
   grid-column: 1 / -1;
   font-size: 13px;
   font-weight: 700;
-  color: var(--gris-700);
+  color: var(--texte-att);
   text-transform: uppercase;
   letter-spacing: 0.03em;
   margin-top: 10px;
@@ -222,16 +247,18 @@ body {
   gap: 2px;
   aspect-ratio: 1 / 1;
   border-radius: var(--rayon-petit);
-  border: 1px solid var(--gris-200);
-  background: var(--blanc);
+  border: none;
+  background: var(--surface);
+  color: var(--texte);
   font-family: inherit;
   cursor: pointer;
   padding: 4px;
+  box-shadow: var(--ombre-legere);
 }
 
 .case-jour-semaine {
   font-size: 11px;
-  color: var(--gris-500);
+  color: var(--texte-att);
   text-transform: lowercase;
 }
 
@@ -242,63 +269,117 @@ body {
 
 .case-jour-selectionnee {
   background: var(--jaune-selection);
-  border-color: var(--ambre-3);
+  box-shadow: var(--ombre-creuse);
 }
 
-.case-jour-selectionnee .case-jour-semaine {
-  color: #7a5200;
+.case-jour-selectionnee .case-jour-semaine,
+.case-jour-selectionnee .case-jour-nombre {
+  color: var(--jaune-texte);
 }
 
-.case-jour-lecture {
-  cursor: default;
+/* Lieux : pilules de selection personnelle */
+
+.pilules-lieux {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
-.case-jour-compte {
-  position: absolute;
-  top: 2px;
-  right: 4px;
-  font-size: 10px;
+.pilule-lieu {
+  border: none;
+  background: var(--surface);
+  color: var(--texte);
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: var(--ombre-legere);
+}
+
+.pilule-lieu-selectionnee {
+  background: var(--jaune-selection);
+  color: var(--jaune-texte);
+  box-shadow: var(--ombre-creuse);
+}
+
+/* Vue de groupe : liste triee par nombre de votes (dates et lieux) */
+
+.titre-sous-section {
+  font-size: 15px;
   font-weight: 700;
-  color: var(--gris-700);
+  margin: 20px 0 10px;
+  color: var(--texte);
 }
 
-.intensite-0 { background: var(--blanc); }
-.intensite-1 { background: var(--ambre-1); border-color: var(--ambre-1); }
-.intensite-2 { background: var(--ambre-2); border-color: var(--ambre-2); }
-.intensite-3 { background: var(--ambre-3); border-color: var(--ambre-3); }
-.intensite-3 .case-jour-semaine,
-.intensite-3 .case-jour-compte { color: #5c3900; }
-.intensite-4 { background: var(--ambre-4); border-color: var(--ambre-4); }
-.intensite-4 .case-jour-semaine,
-.intensite-4 .case-jour-nombre,
-.intensite-4 .case-jour-compte { color: #3d2600; }
-.intensite-5 { background: var(--ambre-5); border-color: var(--ambre-5); }
-.intensite-5 .case-jour-semaine,
-.intensite-5 .case-jour-nombre,
-.intensite-5 .case-jour-compte { color: var(--blanc); }
-
-.case-jour-meilleure {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+.liste-votes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.case-jour-validee {
-  background: var(--vert);
-  border-color: var(--vert);
+.ligne-vote {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--liseret);
+  border-radius: var(--rayon-petit);
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--ombre-legere);
 }
 
-.case-jour-validee .case-jour-semaine,
-.case-jour-validee .case-jour-nombre,
-.case-jour-validee .case-jour-compte {
-  color: var(--blanc);
+.ligne-vote-barre {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--jaune-fond);
+  z-index: 0;
 }
 
-/* Contre-proposition (mode dates precises) */
+.ligne-vote-libelle,
+.ligne-vote-compte {
+  position: relative;
+  z-index: 1;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--texte);
+}
+
+.ligne-vote-compte {
+  color: var(--texte-att);
+  white-space: nowrap;
+}
+
+.ligne-vote-meilleure {
+  border-color: rgba(110, 224, 122, 0.5);
+  box-shadow: var(--ombre-legere), 0 0 16px var(--accent-glow);
+}
+
+.ligne-vote-validee {
+  border-color: rgba(110, 224, 122, 0.6);
+  background: var(--accent-fond);
+}
+
+.ligne-vote-validee .ligne-vote-barre {
+  background: transparent;
+}
+
+.ligne-vote-validee .ligne-vote-libelle,
+.ligne-vote-validee .ligne-vote-compte {
+  color: var(--accent);
+}
+
+/* Contre-proposition */
 
 .bloc-contre-proposition {
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid var(--gris-200);
+  border-top: 1px solid var(--liseret);
 }
 
 .ligne-contre-proposition {
@@ -306,18 +387,22 @@ body {
   gap: 8px;
 }
 
-.ligne-contre-proposition input[type="date"] {
+.ligne-contre-proposition input {
   flex: 1;
+  min-width: 0;
   font-size: 16px;
   padding: 12px 14px;
-  border: 1px solid var(--gris-200);
+  border: 1px solid var(--liseret);
   border-radius: var(--rayon-petit);
+  background: var(--surface);
+  color: var(--texte);
+  box-shadow: var(--ombre-creuse);
 }
 
 .bouton-secondaire {
-  background: var(--blanc);
+  background: var(--surface);
   color: var(--accent);
-  border: 1px solid var(--accent);
+  box-shadow: var(--ombre-legere);
   flex-shrink: 0;
 }
 
@@ -326,8 +411,8 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--gris-200);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--liseret);
 }
 
 .ligne-attente:last-child {
@@ -337,12 +422,13 @@ body {
 .ligne-attente-texte {
   font-size: 14px;
   font-weight: 600;
+  color: var(--texte);
 }
 
 .ligne-attente-auteur {
   font-size: 13px;
   font-weight: 400;
-  color: var(--gris-700);
+  color: var(--texte-att);
 }
 
 .boutons-attente {
@@ -359,25 +445,26 @@ body {
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
+  box-shadow: var(--ombre-legere);
 }
 
 .bouton-pastille-accepter {
-  background: var(--vert-clair);
-  color: #1c6b3a;
+  background: var(--accent-fond);
+  color: var(--accent);
 }
 
 .bouton-pastille-refuser {
-  background: #fbe9e7;
+  background: var(--rouge-fond);
   color: var(--rouge);
 }
 
 .liste-participants {
   font-size: 13px;
-  color: var(--gris-700);
+  color: var(--texte-att);
   margin: 12px 0 0;
 }
 
-/* Page de creation reussie : les deux liens */
+/* Page de creation reussie */
 
 .bloc-lien {
   margin-bottom: 18px;
@@ -391,12 +478,8 @@ body {
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: var(--gris-700);
+  color: var(--texte-att);
   margin-bottom: 6px;
-}
-
-.bloc-lien-secret .etiquette-lien {
-  color: var(--accent-fonce);
 }
 
 .ligne-copie {
@@ -409,22 +492,24 @@ body {
   min-width: 0;
   font-size: 13px;
   padding: 10px 12px;
-  border: 1px solid var(--gris-200);
+  border: 1px solid var(--liseret);
   border-radius: var(--rayon-petit);
-  background: var(--gris-100);
-  color: var(--gris-950);
+  background: var(--surface-haute);
+  color: var(--texte);
+  box-shadow: var(--ombre-creuse);
 }
 
 .bouton-copier {
   flex-shrink: 0;
-  border: 1px solid var(--accent);
-  background: var(--blanc);
+  border: none;
+  background: var(--surface);
   color: var(--accent);
   border-radius: var(--rayon-petit);
   padding: 0 14px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  box-shadow: var(--ombre-legere);
 }
 
 /* Bascule de mode (creation de sortie) */
@@ -437,9 +522,9 @@ body {
 
 .bouton-mode {
   flex: 1;
-  border: 1px solid var(--gris-200);
-  background: var(--blanc);
-  color: var(--gris-700);
+  border: none;
+  background: var(--surface);
+  color: var(--texte-att);
   border-radius: var(--rayon-petit);
   padding: 12px 8px;
   font-size: 14px;
@@ -447,12 +532,13 @@ body {
   font-family: inherit;
   cursor: pointer;
   text-align: center;
+  box-shadow: var(--ombre-legere);
 }
 
 .bouton-mode-actif {
-  border-color: var(--accent);
   background: var(--accent);
-  color: var(--blanc);
+  color: var(--accent-texte);
+  box-shadow: var(--ombre-creuse), 0 0 14px var(--accent-glow);
 }
 
 /* Calendrier mensuel navigable (formulaire de creation) */
@@ -465,24 +551,27 @@ body {
 }
 
 .calendrier-nav button {
-  border: 1px solid var(--gris-200);
-  background: var(--blanc);
-  color: var(--gris-700);
+  border: none;
+  background: var(--surface);
+  color: var(--texte);
   border-radius: var(--rayon-petit);
   width: 36px;
   height: 36px;
   font-size: 18px;
   cursor: pointer;
+  box-shadow: var(--ombre-legere);
 }
 
 .calendrier-nav button:disabled {
-  opacity: 0.35;
+  opacity: 0.3;
   cursor: default;
+  box-shadow: none;
 }
 
 #libelle-mois-affiche {
   font-weight: 700;
   font-size: 15px;
+  color: var(--texte);
 }
 
 .grille-jours-semaine {
@@ -492,7 +581,7 @@ body {
   margin-bottom: 4px;
   text-align: center;
   font-size: 12px;
-  color: var(--gris-500);
+  color: var(--texte-att);
   text-transform: uppercase;
 }
 
@@ -508,30 +597,54 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--gris-200);
+  border: none;
   border-radius: var(--rayon-petit);
-  background: var(--blanc);
+  background: var(--surface);
   font-size: 14px;
   font-weight: 600;
   font-family: inherit;
-  color: var(--gris-950);
+  color: var(--texte);
   cursor: pointer;
   padding: 0;
+  box-shadow: var(--ombre-legere);
 }
 
 .case-jour-mois-vide {
   visibility: hidden;
+  box-shadow: none;
 }
 
 .case-jour-mois-desactivee {
-  color: var(--gris-500);
-  background: var(--gris-100);
+  color: var(--texte-att);
+  background: var(--surface);
   cursor: default;
+  box-shadow: var(--ombre-creuse);
+  opacity: 0.5;
 }
 
 .case-jour-mois-selectionnee {
   background: var(--jaune-selection);
-  border-color: var(--ambre-3);
+  color: var(--jaune-texte);
+  box-shadow: var(--ombre-creuse);
+}
+
+.ligne-heures {
+  display: flex;
+  gap: 8px;
+}
+
+.ligne-heures select {
+  flex: 1;
+  min-width: 0;
+}
+
+.ligne-lieu {
+  margin-bottom: 10px;
+}
+
+#bouton-ajouter-lieu {
+  display: inline-block;
+  margin: 4px 0 20px;
 }
 
 .lien-discret {

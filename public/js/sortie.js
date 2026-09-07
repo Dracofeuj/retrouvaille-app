@@ -1,5 +1,5 @@
-// Interactivite de la page "sortie" cote invite : peindre ses jours dispo
-// et les enregistrer, sans jamais recharger la page pour ca.
+// Interactivite de la page "sortie" cote invite : peindre ses jours dispo et
+// choisir ses lieux preferes, puis tout enregistrer en un seul geste.
 
 (function () {
   const { evenementId, prenomOrganisateur } = window.DONNEES_SORTIE;
@@ -7,15 +7,24 @@
 
   const champPrenom = document.getElementById('champ-prenom');
   const calendrier = document.getElementById('calendrier-perso');
+  const pilulesLieux = document.getElementById('pilules-lieux-perso');
   const boutonEnregistrer = document.getElementById('bouton-enregistrer');
   const messageEtat = document.getElementById('message-etat');
 
   const joursSelectionnes = new Set();
+  const lieuxSelectionnes = new Set();
 
   function appliquerSelectionAuCalendrier() {
     calendrier.querySelectorAll('.case-jour').forEach((caseJour) => {
       const jour = caseJour.dataset.jour;
       caseJour.classList.toggle('case-jour-selectionnee', joursSelectionnes.has(jour));
+    });
+  }
+
+  function appliquerSelectionAuxLieux() {
+    if (!pilulesLieux) return;
+    pilulesLieux.querySelectorAll('.pilule-lieu').forEach((pilule) => {
+      pilule.classList.toggle('pilule-lieu-selectionnee', lieuxSelectionnes.has(pilule.dataset.lieu));
     });
   }
 
@@ -30,6 +39,18 @@
     } catch (erreur) {
       // Pas grave si ca echoue : l'invite peut quand meme peindre ses jours.
     }
+
+    if (pilulesLieux) {
+      try {
+        const reponseLieux = await fetch(`/e/${evenementId}/votes-lieu/${encodeURIComponent(prenom)}`);
+        const donneesLieux = await reponseLieux.json();
+        lieuxSelectionnes.clear();
+        (donneesLieux.lieux || []).forEach((id) => lieuxSelectionnes.add(id));
+        appliquerSelectionAuxLieux();
+      } catch (erreur) {
+        // Pas grave non plus.
+      }
+    }
   }
 
   // Au chargement : reprendre le prenom deja utilise sur ce navigateur pour
@@ -42,7 +63,7 @@
   }
 
   // Si l'invite tape un prenom deja utilise (par lui ou quelqu'un d'autre sur
-  // cet evenement), on retrouve ses jours deja enregistres.
+  // cet evenement), on retrouve ses jours/lieux deja enregistres.
   champPrenom.addEventListener('blur', () => {
     const prenom = champPrenom.value.trim();
     if (prenom) chargerDisposExistantes(prenom);
@@ -60,18 +81,47 @@
     appliquerSelectionAuCalendrier();
   });
 
+  if (pilulesLieux) {
+    pilulesLieux.addEventListener('click', (evenement) => {
+      const pilule = evenement.target.closest('.pilule-lieu');
+      if (!pilule) return;
+      const id = pilule.dataset.lieu;
+      if (lieuxSelectionnes.has(id)) {
+        lieuxSelectionnes.delete(id);
+      } else {
+        lieuxSelectionnes.add(id);
+      }
+      appliquerSelectionAuxLieux();
+    });
+  }
+
+  function verifierPrenomAvantEnvoi(champCachePrenomId, messageErreur) {
+    const prenom = champPrenom.value.trim();
+    if (!prenom) {
+      messageEtat.textContent = messageErreur;
+      messageEtat.classList.add('message-erreur');
+      champPrenom.focus();
+      return null;
+    }
+    if (champCachePrenomId) document.getElementById(champCachePrenomId).value = prenom;
+    return prenom;
+  }
+
   const formulaireContreProposition = document.getElementById('formulaire-contre-proposition');
   if (formulaireContreProposition) {
     formulaireContreProposition.addEventListener('submit', (evenementSubmit) => {
-      const prenom = champPrenom.value.trim();
-      if (!prenom) {
+      if (!verifierPrenomAvantEnvoi('champ-prenom-contre-proposition', 'Indique ton prénom avant de proposer une date.')) {
         evenementSubmit.preventDefault();
-        messageEtat.textContent = 'Indique ton prénom avant de proposer une date.';
-        messageEtat.classList.add('message-erreur');
-        champPrenom.focus();
-        return;
       }
-      document.getElementById('champ-prenom-contre-proposition').value = prenom;
+    });
+  }
+
+  const formulaireContrePropositionLieu = document.getElementById('formulaire-contre-proposition-lieu');
+  if (formulaireContrePropositionLieu) {
+    formulaireContrePropositionLieu.addEventListener('submit', (evenementSubmit) => {
+      if (!verifierPrenomAvantEnvoi('champ-prenom-contre-proposition-lieu', 'Indique ton prénom avant de proposer un lieu.')) {
+        evenementSubmit.preventDefault();
+      }
     });
   }
 
@@ -89,12 +139,26 @@
     messageEtat.textContent = 'Enregistrement...';
 
     try {
-      const reponse = await fetch(`/e/${evenementId}/dispos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prenom, jours: Array.from(joursSelectionnes) }),
-      });
-      if (!reponse.ok) throw new Error('echec');
+      const requetes = [
+        fetch(`/e/${evenementId}/dispos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prenom, jours: Array.from(joursSelectionnes) }),
+        }),
+      ];
+
+      if (pilulesLieux) {
+        requetes.push(
+          fetch(`/e/${evenementId}/votes-lieu`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prenom, lieux: Array.from(lieuxSelectionnes) }),
+          })
+        );
+      }
+
+      const reponses = await Promise.all(requetes);
+      if (reponses.some((r) => !r.ok)) throw new Error('echec');
 
       window.localStorage.setItem(cleLocalStorage, prenom);
       messageEtat.textContent = 'Enregistré ! Mise à jour de la vue du groupe...';

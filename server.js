@@ -5,8 +5,16 @@
 const express = require('express');
 const prisma = require('./lib/db');
 const semerDonneesDemo = require('./prisma/seed');
-const { aujourdhui, listeDesJours, formaterJourLong, formaterJourCourt, construireJoursAffiches } = require('./lib/dates');
-const { calculerHeatmap, niveauIntensite } = require('./lib/heatmap');
+const {
+  aujourdhui,
+  listeDesJours,
+  formaterJourLong,
+  formaterJourCourt,
+  construireJoursAffiches,
+  genererOptionsHeure,
+  formaterPlageHeures,
+} = require('./lib/dates');
+const { calculerVotesDates, calculerVotesLieux } = require('./lib/heatmap');
 const { estOrganisateurPourEvenement, definirCookieOrganisateur } = require('./lib/organisateur');
 
 const app = express();
@@ -33,12 +41,25 @@ async function obtenirJoursVotables(evenement) {
   return listeDesJours(evenement.dateDebut, evenement.dateFin);
 }
 
+async function obtenirLieuxVotables(evenement) {
+  return prisma.lieuPropose.findMany({
+    where: { evenementId: evenement.id, statut: 'valide' },
+    orderBy: { createdAt: 'asc' },
+  });
+}
+
+function formatCompteVotes(n) {
+  if (n === 0) return "Personne n'a encore voté";
+  if (n === 1) return '1 a voté';
+  return `${n} ont voté`;
+}
+
 // ---------- Page d'accueil : creer une sortie ----------
 
 async function donneesAccueil(erreur) {
   const debutParDefaut = aujourdhui();
   const exemples = erreur ? [] : await prisma.evenement.findMany({ orderBy: { createdAt: 'asc' }, take: 2 });
-  return { debutParDefaut, erreur, exemples };
+  return { debutParDefaut, erreur, exemples, optionsHeure: genererOptionsHeure() };
 }
 
 app.get('/', async (req, res) => {
@@ -49,6 +70,11 @@ app.post('/evenements', async (req, res) => {
   const titre = (req.body.titre || '').trim();
   const createurPrenom = (req.body.createurPrenom || '').trim();
   const mode = req.body.mode === 'calendrier_libre' ? 'calendrier_libre' : 'dates_precises';
+  const heureDebut = /^\d{2}:\d{2}$/.test(req.body.heureDebut) ? req.body.heureDebut : null;
+  const heureFin = /^\d{2}:\d{2}$/.test(req.body.heureFin) ? req.body.heureFin : null;
+
+  const lieuxBruts = Array.isArray(req.body.lieux) ? req.body.lieux : req.body.lieux ? [req.body.lieux] : [];
+  const nomsLieux = [...new Set(lieuxBruts.map((l) => l.trim()).filter(Boolean))];
 
   async function erreurCreation(message) {
     res.status(400).render('accueil', await donneesAccueil(message));
@@ -58,6 +84,7 @@ app.post('/evenements', async (req, res) => {
   if (!createurPrenom) return erreurCreation('Merci d\'indiquer ton prenom.');
 
   let evenement;
+  const lieuxProposesData = { create: nomsLieux.map((nom) => ({ nom, statut: 'valide', proposeParPrenom: createurPrenom })) };
 
   if (mode === 'calendrier_libre') {
     const dateDebut = req.body.dateDebut;
@@ -67,7 +94,7 @@ app.post('/evenements', async (req, res) => {
     }
 
     evenement = await prisma.evenement.create({
-      data: { titre, mode, createurPrenom, dateDebut, dateFin },
+      data: { titre, mode, createurPrenom, dateDebut, dateFin, heureDebut, heureFin, lieuxProposes: lieuxProposesData },
     });
   } else {
     // mode === 'dates_precises' : une ou plusieurs dates saisies a la main
@@ -83,11 +110,14 @@ app.post('/evenements', async (req, res) => {
         titre,
         mode,
         createurPrenom,
+        heureDebut,
+        heureFin,
         dateDebut: datesValides[0],
         dateFin: datesValides[datesValides.length - 1],
         datesProposees: {
           create: datesValides.map((jour) => ({ jour, statut: 'validee', proposeParPrenom: createurPrenom })),
         },
+        lieuxProposes: lieuxProposesData,
       },
     });
   }
@@ -117,39 +147,76 @@ app.get('/e/:id', async (req, res) => {
 
   const estOrganisateur = estOrganisateurPourEvenement(req, evenement);
   const joursPeriode = await obtenirJoursVotables(evenement);
+  const lieuxValides = await obtenirLieuxVotables(evenement);
+
   const participants = await prisma.participant.findMany({
     where: { evenementId: evenement.id },
-    include: { dispos: true },
+    include: { dispos: true, votesLieu: true },
     orderBy: { createdAt: 'asc' },
   });
 
-  const { compte, totalParticipants, maxCompte, meilleursJours } = calculerHeatmap(joursPeriode, participants);
-
+  // Calendrier personnel (inchange) : sert a peindre ses dispos.
+  const { compte, meilleuresCles: meilleursJours } = calculerVotesDates(joursPeriode, participants);
   const joursAffiches = construireJoursAffiches(joursPeriode).map((j) => ({
     ...j,
     libelleCourt: formaterJourCourt(j.jour),
     nombreDispos: compte[j.jour],
-    intensite: niveauIntensite(compte[j.jour], maxCompte),
     estMeilleur: meilleursJours.includes(j.jour),
     estValide: evenement.jourValide === j.jour,
   }));
 
+  // Vue de groupe : liste triee par nombre de votes decroissant. En
+  // "calendrier_libre" la periode peut etre tres longue, donc on ne montre
+  // que les jours ayant recu au moins un vote ; en "dates_precises" la liste
+  // de depart est courte, on montre tout.
+  const maxComptejours = Math.max(0, ...joursAffiches.map((j) => j.nombreDispos));
+  const joursListe = joursAffiches
+    .filter((j) => evenement.mode === 'dates_precises' || j.nombreDispos > 0)
+    .map((j) => ({
+      ...j,
+      pourcentage: maxComptejours > 0 ? Math.round((j.nombreDispos / maxComptejours) * 100) : 0,
+      compteTexte: formatCompteVotes(j.nombreDispos),
+    }))
+    .sort((a, b) => b.nombreDispos - a.nombreDispos || (a.jour < b.jour ? -1 : 1));
+  const totalParticipants = participants.length;
+
+  // Lieux : meme principe.
+  const votesLieux = calculerVotesLieux(lieuxValides, participants);
+  const maxCompteLieux = votesLieux.maxCompte;
+  const lieuxListe = lieuxValides
+    .map((l) => ({
+      id: l.id,
+      nom: l.nom,
+      nombreVotes: votesLieux.compte[l.id],
+      pourcentage: maxCompteLieux > 0 ? Math.round((votesLieux.compte[l.id] / maxCompteLieux) * 100) : 0,
+      compteTexte: formatCompteVotes(votesLieux.compte[l.id]),
+      estMeilleur: votesLieux.meilleuresCles.includes(l.id),
+      estValide: evenement.lieuValideId === l.id,
+    }))
+    .sort((a, b) => b.nombreVotes - a.nombreVotes || a.nom.localeCompare(b.nom));
+
   const datesEnAttente =
     evenement.mode === 'dates_precises'
-      ? await prisma.dateProposee.findMany({
-          where: { evenementId: evenement.id, statut: 'en_attente' },
-          orderBy: { createdAt: 'asc' },
-        })
+      ? await prisma.dateProposee.findMany({ where: { evenementId: evenement.id, statut: 'en_attente' }, orderBy: { createdAt: 'asc' } })
       : [];
+  const lieuxEnAttente = await prisma.lieuPropose.findMany({
+    where: { evenementId: evenement.id, statut: 'en_attente' },
+    orderBy: { createdAt: 'asc' },
+  });
 
   res.render('sortie', {
     evenement,
     estOrganisateur,
     joursAffiches,
+    joursListe,
+    lieuxListe,
     totalParticipants,
     participants,
     datesEnAttente,
+    lieuxEnAttente,
     formaterJourLong,
+    formatCompteVotes,
+    plageHeures: formaterPlageHeures(evenement.heureDebut, evenement.heureFin),
     lienPartage: `${req.protocol}://${req.get('host')}/e/${evenement.id}`,
   });
 });
@@ -198,6 +265,47 @@ app.get('/e/:id/dispos/:prenom', async (req, res) => {
     include: { dispos: true },
   });
   res.json({ jours: participant ? participant.dispos.map((d) => d.jour) : [] });
+});
+
+// ---------- Voter pour un ou plusieurs lieux ----------
+// Meme mecanique que /dispos, mais pour les lieux.
+
+app.post('/e/:id/votes-lieu', async (req, res) => {
+  const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
+  if (!evenement) return res.status(404).json({ erreur: 'Sortie introuvable.' });
+
+  const prenom = (req.body.prenom || '').trim();
+  const lieuxChoisis = Array.isArray(req.body.lieux) ? req.body.lieux : [];
+
+  if (!prenom) {
+    return res.status(400).json({ erreur: 'Merci d\'indiquer un prenom.' });
+  }
+
+  const lieuxValides = new Set((await obtenirLieuxVotables(evenement)).map((l) => l.id));
+  const lieuxFiltres = lieuxChoisis.filter((id) => lieuxValides.has(id));
+
+  const participant = await prisma.participant.upsert({
+    where: { evenementId_prenom: { evenementId: evenement.id, prenom } },
+    create: { evenementId: evenement.id, prenom },
+    update: {},
+  });
+
+  await prisma.voteLieu.deleteMany({ where: { participantId: participant.id } });
+  if (lieuxFiltres.length > 0) {
+    await prisma.voteLieu.createMany({
+      data: lieuxFiltres.map((lieuProposeId) => ({ participantId: participant.id, lieuProposeId })),
+    });
+  }
+
+  res.json({ ok: true });
+});
+
+app.get('/e/:id/votes-lieu/:prenom', async (req, res) => {
+  const participant = await prisma.participant.findUnique({
+    where: { evenementId_prenom: { evenementId: req.params.id, prenom: req.params.prenom } },
+    include: { votesLieu: true },
+  });
+  res.json({ lieux: participant ? participant.votesLieu.map((v) => v.lieuProposeId) : [] });
 });
 
 // ---------- Contre-proposition (mode "dates_precises" uniquement) ----------
@@ -254,7 +362,58 @@ app.post('/e/:id/dates-proposees/:dateProposeeId/refuser', async (req, res) => {
   res.redirect(`/e/${evenement.id}`);
 });
 
-// ---------- Valider le jour retenu (organisateur uniquement) ----------
+// ---------- Contre-proposition de lieu (ouverte a tous) ----------
+
+app.post('/e/:id/contre-proposition-lieu', async (req, res) => {
+  const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
+  if (!evenement) return res.status(404).send('Sortie introuvable.');
+
+  const nom = (req.body.nom || '').trim();
+  const prenom = (req.body.prenom || '').trim();
+  if (!nom) return res.status(400).send('Merci de proposer un nom de lieu.');
+  if (!prenom) return res.status(400).send('Merci d\'indiquer un prenom.');
+
+  await prisma.lieuPropose.upsert({
+    where: { evenementId_nom: { evenementId: evenement.id, nom } },
+    create: { evenementId: evenement.id, nom, statut: 'en_attente', proposeParPrenom: prenom },
+    update: {}, // le lieu existe deja (valide ou deja en attente) : on ne change rien
+  });
+
+  res.redirect(`/e/${evenement.id}`);
+});
+
+app.post('/e/:id/lieux-proposes/:lieuProposeId/accepter', async (req, res) => {
+  const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
+  if (!evenement) return res.status(404).send('Sortie introuvable.');
+  if (!estOrganisateurPourEvenement(req, evenement)) {
+    return res.status(403).send('Seul l\'organisateur peut accepter une contre-proposition.');
+  }
+
+  await prisma.lieuPropose.updateMany({
+    where: { id: req.params.lieuProposeId, evenementId: evenement.id },
+    data: { statut: 'valide' },
+  });
+
+  res.redirect(`/e/${evenement.id}`);
+});
+
+app.post('/e/:id/lieux-proposes/:lieuProposeId/refuser', async (req, res) => {
+  const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
+  if (!evenement) return res.status(404).send('Sortie introuvable.');
+  if (!estOrganisateurPourEvenement(req, evenement)) {
+    return res.status(403).send('Seul l\'organisateur peut refuser une contre-proposition.');
+  }
+
+  await prisma.lieuPropose.deleteMany({
+    where: { id: req.params.lieuProposeId, evenementId: evenement.id },
+  });
+
+  res.redirect(`/e/${evenement.id}`);
+});
+
+// ---------- Valider le jour et/ou le lieu retenu (organisateur uniquement) ----------
+// Les deux validations sont independantes : on peut valider la date sans
+// avoir encore choisi le lieu, et inversement.
 
 app.post('/e/:id/valider', async (req, res) => {
   const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
@@ -272,6 +431,27 @@ app.post('/e/:id/valider', async (req, res) => {
   await prisma.evenement.update({
     where: { id: evenement.id },
     data: { statut: 'confirme', jourValide: jour },
+  });
+
+  res.redirect(`/e/${evenement.id}`);
+});
+
+app.post('/e/:id/valider-lieu', async (req, res) => {
+  const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
+  if (!evenement) return res.status(404).send('Sortie introuvable.');
+  if (!estOrganisateurPourEvenement(req, evenement)) {
+    return res.status(403).send('Seul l\'organisateur peut valider le lieu retenu.');
+  }
+
+  const lieuId = req.body.lieuId;
+  const lieuxValides = new Set((await obtenirLieuxVotables(evenement)).map((l) => l.id));
+  if (!lieuId || !lieuxValides.has(lieuId)) {
+    return res.status(400).send('Lieu invalide.');
+  }
+
+  await prisma.evenement.update({
+    where: { id: evenement.id },
+    data: { lieuValideId: lieuId },
   });
 
   res.redirect(`/e/${evenement.id}`);

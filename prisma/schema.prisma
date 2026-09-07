@@ -12,13 +12,16 @@ datasource db {
 
 // Une sortie proposee par un organisateur.
 model Evenement {
-  id            String   @id @default(cuid())
-  titre         String
-  mode          String   @default("dates_precises") // "dates_precises" ou "calendrier_libre"
-  dateDebut     String // format AAAA-MM-JJ (simple date, sans heure/fuseau)
-  dateFin       String // format AAAA-MM-JJ
-  statut        String   @default("en_cours") // "en_cours" ou "confirme"
-  jourValide    String? // format AAAA-MM-JJ, rempli quand confirme
+  id             String   @id @default(cuid())
+  titre          String
+  mode           String   @default("dates_precises") // "dates_precises" ou "calendrier_libre"
+  dateDebut      String // format AAAA-MM-JJ (simple date, sans heure/fuseau)
+  dateFin        String // format AAAA-MM-JJ
+  heureDebut     String? // format HH:MM, facultatif ("a definir" si vide)
+  heureFin       String? // format HH:MM, facultatif
+  statut         String   @default("en_cours") // "en_cours" ou "confirme"
+  jourValide     String? // format AAAA-MM-JJ, rempli quand confirme
+  lieuValideId   String? // id du LieuPropose retenu, rempli quand confirme
   createurPrenom String
   // Jeton compare au cookie pose sur le navigateur du createur pour le
   // reconnaitre comme organisateur (voir lib/organisateur.js). Plus tard,
@@ -28,6 +31,7 @@ model Evenement {
 
   participants   Participant[]
   datesProposees DateProposee[]
+  lieuxProposes  LieuPropose[]
 }
 
 // Une date precise, utilisee seulement en mode "dates_precises". Les dates
@@ -47,6 +51,24 @@ model DateProposee {
   @@unique([evenementId, jour])
 }
 
+// Un lieu propose pour la sortie. Meme logique que DateProposee : celui/ceux
+// donnes par le createur a la creation sont deja "valide" ; une
+// contre-proposition d'un invite arrive "en_attente" jusqu'a acceptation
+// par l'organisateur.
+model LieuPropose {
+  id               String   @id @default(cuid())
+  evenementId      String
+  nom              String
+  statut           String   @default("valide") // "valide" ou "en_attente"
+  proposeParPrenom String?
+  createdAt        DateTime @default(now())
+
+  evenement Evenement @relation(fields: [evenementId], references: [id], onDelete: Cascade)
+  votes     VoteLieu[]
+
+  @@unique([evenementId, nom])
+}
+
 // Une personne qui a vote sur une sortie (invite : juste un prenom, pas de compte).
 model Participant {
   id          String   @id @default(cuid())
@@ -54,8 +76,9 @@ model Participant {
   prenom      String
   createdAt   DateTime @default(now())
 
-  evenement Evenement @relation(fields: [evenementId], references: [id], onDelete: Cascade)
+  evenement Evenement  @relation(fields: [evenementId], references: [id], onDelete: Cascade)
   dispos    Dispo[]
+  votesLieu VoteLieu[]
 
   @@unique([evenementId, prenom]) // un seul "profil" par prenom sur une sortie
 }
@@ -69,4 +92,16 @@ model Dispo {
   participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 
   @@unique([participantId, jour])
+}
+
+// Un lieu qu'un participant approuve.
+model VoteLieu {
+  id            String @id @default(cuid())
+  participantId String
+  lieuProposeId String
+
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  lieuPropose LieuPropose @relation(fields: [lieuProposeId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, lieuProposeId])
 }

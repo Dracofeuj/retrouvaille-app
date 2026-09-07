@@ -44,6 +44,34 @@
   <input type="hidden" id="champ-aujourdhui" value="<%= debutParDefaut %>" />
   <div id="conteneur-champs-caches"></div>
 
+  <div class="champ">
+    <span>Heure (facultatif)</span>
+    <div class="ligne-heures">
+      <select name="heureDebut">
+        <option value="">Début : à définir</option>
+        <% optionsHeure.forEach(function(o) { %>
+          <option value="<%= o.valeur %>">Début : <%= o.libelle %></option>
+        <% }) %>
+      </select>
+      <select name="heureFin">
+        <option value="">Fin : à définir</option>
+        <% optionsHeure.forEach(function(o) { %>
+          <option value="<%= o.valeur %>">Fin : <%= o.libelle %></option>
+        <% }) %>
+      </select>
+    </div>
+  </div>
+
+  <div class="champ">
+    <span>Lieu proposé (facultatif)</span>
+    <div id="liste-lieux">
+      <div class="ligne-lieu">
+        <input type="text" name="lieux" placeholder="Ex : Chez Papa" maxlength="120" />
+      </div>
+    </div>
+    <button type="button" class="lien-comme-bouton" id="bouton-ajouter-lieu">+ Ajouter un lieu</button>
+  </div>
+
   <button type="submit" class="bouton bouton-principal bouton-pleine-largeur">Créer la sortie</button>
 </form>
 

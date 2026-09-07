@@ -167,4 +167,16 @@
   });
 
   rendreCalendrier();
+
+  // ----- Ajout de lignes "lieu propose" (texte libre, facultatif) -----
+  const listeLieux = document.getElementById('liste-lieux');
+  const boutonAjouterLieu = document.getElementById('bouton-ajouter-lieu');
+  if (boutonAjouterLieu) {
+    boutonAjouterLieu.addEventListener('click', () => {
+      const ligne = document.createElement('div');
+      ligne.className = 'ligne-lieu';
+      ligne.innerHTML = '<input type="text" name="lieux" placeholder="Ex : La Locanda" maxlength="120" />';
+      listeLieux.appendChild(ligne);
+    });
+  }
 })();

@@ -1,14 +1,17 @@
 # Retrouvailles — boucle de vote
 
 Application web pour caler une sortie entre amis : un organisateur propose
-une sortie (des dates précises, ou un calendrier ouvert), chacun vote ses
-disponibilités, le meilleur jour ressort tout seul, l'organisateur le
-valide. Pas de compte, pas de messagerie, un seul lien pour tout le monde.
+une sortie (des dates précises, ou un calendrier ouvert), avec une heure et
+un ou plusieurs lieux facultatifs ; chacun vote ses disponibilités et ses
+lieux préférés, le meilleur ressort tout seul dans une liste triée,
+l'organisateur valide. Pas de compte, pas de messagerie, un seul lien pour
+tout le monde. Design neumorphique sombre (surfaces embossées, accent vert).
 
 Cette version couvre **uniquement la boucle de vote** (créer une sortie
-dans l'un des deux modes, voter, contre-proposer une date, voir le résultat,
-valider). Le reste du produit (comptes, groupes, albums photo...) est décrit
-dans `CONTEXTE-PRODUIT.md` mais n'est pas construit ici.
+dans l'un des deux modes avec heure/lieu, voter, contre-proposer une date ou
+un lieu, voir le résultat, valider). Le reste du produit (comptes, groupes,
+albums photo...) est décrit dans `CONTEXTE-PRODUIT.md` mais n'est pas
+construit ici.
 
 ## Lancer le projet en local
 
@@ -43,7 +46,7 @@ server.js              routes de l'application (une route = une page ou une acti
 prisma/schema.prisma    structure de la base de données
 prisma/seed.js          creation des donnees de demonstration
 lib/dates.js            manipulation des dates (format AAAA-MM-JJ, sans fuseau horaire)
-lib/heatmap.js          calcul du "meilleur jour" et du degrade de couleurs
+lib/heatmap.js          comptage des votes (dates et lieux) et calcul du "meilleur"
 lib/organisateur.js     reconnaissance du createur via un cookie (lien unique)
 lib/db.js               connexion a la base de donnees (Prisma)
 views/                  pages HTML (moteur de template EJS)
@@ -54,9 +57,10 @@ public/js/              interactivite cote navigateur (peindre les jours, copier
 ## Modèle de données
 
 - **Evenement** : titre, `mode` (`dates_precises` ou `calendrier_libre`),
-  période (`dateDebut`/`dateFin`), statut (`en_cours`/`confirme`),
-  `jourValide`, `createurPrenom`, et `jetonCreateur` (comparé au cookie posé
-  sur le navigateur du créateur pour le reconnaître comme organisateur).
+  période (`dateDebut`/`dateFin`), `heureDebut`/`heureFin` (facultatives),
+  statut (`en_cours`/`confirme`), `jourValide`, `lieuValideId`,
+  `createurPrenom`, et `jetonCreateur` (comparé au cookie posé sur le
+  navigateur du créateur pour le reconnaître comme organisateur).
 - **Participant** : un prénom rattaché à un événement (un invité, sans compte).
 - **Dispo** : un jour où un participant a dit être disponible.
 - **DateProposee** : utilisée seulement en mode `dates_precises` — une date
@@ -64,14 +68,20 @@ public/js/              interactivite cote navigateur (peindre les jours, copier
   (`proposeParPrenom`). Les dates de départ sont `validee` d'emblée ; une
   contre-proposition d'invité arrive `en_attente` jusqu'à ce que
   l'organisateur l'accepte.
+- **LieuPropose** : un lieu proposé (`statut` `valide`/`en_attente`,
+  `proposeParPrenom`), même logique que `DateProposee`.
+- **VoteLieu** : un lieu qu'un participant approuve (équivalent de `Dispo`
+  pour les lieux).
 
-Le meilleur jour = celui qui a le plus de lignes `Dispo`. Le dégradé de
-couleurs de la vue de groupe est calculé par rapport à ce maximum (pas par
-rapport au nombre total d'inscrits), sur 5 paliers — voir `lib/heatmap.js`.
+Le meilleur jour/lieu = celui qui a le plus de votes. La validation du jour
+et celle du lieu sont indépendantes : on peut confirmer l'un sans l'autre.
+La vue de groupe (`views/sortie.ejs` + partial `views/partials/ligne-vote.ejs`)
+affiche une liste triée par nombre de votes décroissant, avec une barre de
+remplissage proportionnelle — voir `lib/heatmap.js` pour le comptage.
 
-Toutes les dates sont stockées comme de simples chaînes `AAAA-MM-JJ` (pas
-de type date avec heure/fuseau), pour éviter les décalages d'un jour selon
-le fuseau horaire du visiteur ou du serveur.
+Toutes les dates sont stockées comme de simples chaînes `AAAA-MM-JJ`, et les
+heures comme `HH:MM` (pas de type datetime avec fuseau), pour éviter les
+décalages selon le fuseau horaire du visiteur ou du serveur.
 
 ## Lien unique et reconnaissance de l'organisateur
 

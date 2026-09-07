@@ -23,8 +23,17 @@ async function semerDonneesDemo() {
       createurPrenom: 'Camille',
       dateDebut: debut,
       dateFin: finCalendrier,
+      heureDebut: '20:00',
+      lieuxProposes: {
+        create: [
+          { nom: 'Chez Papa', statut: 'valide', proposeParPrenom: 'Camille' },
+          { nom: 'La Locanda', statut: 'valide', proposeParPrenom: 'Camille' },
+        ],
+      },
     },
+    include: { lieuxProposes: true },
   });
+  const [lieuChezPapa, lieuLocanda] = evenementCalendrier.lieuxProposes;
 
   const j3 = ajouterJours(debut, 3);
   const j4 = ajouterJours(debut, 4);
@@ -33,15 +42,16 @@ async function semerDonneesDemo() {
   const j11 = ajouterJours(debut, 11);
 
   for (const vote of [
-    { prenom: 'Alex', jours: [j3, j4, j10] },
-    { prenom: 'Camille', jours: [j4, j5, j10, j11] },
-    { prenom: 'Sacha', jours: [j4, j10] },
+    { prenom: 'Alex', jours: [j3, j4, j10], lieux: [lieuChezPapa.id] },
+    { prenom: 'Camille', jours: [j4, j5, j10, j11], lieux: [lieuChezPapa.id, lieuLocanda.id] },
+    { prenom: 'Sacha', jours: [j4, j10], lieux: [lieuChezPapa.id] },
   ]) {
     await prisma.participant.create({
       data: {
         evenementId: evenementCalendrier.id,
         prenom: vote.prenom,
         dispos: { create: vote.jours.map((jour) => ({ jour })) },
+        votesLieu: { create: vote.lieux.map((lieuProposeId) => ({ lieuProposeId })) },
       },
     });
   }
@@ -59,6 +69,8 @@ async function semerDonneesDemo() {
       createurPrenom: 'Maxence',
       dateDebut: d1,
       dateFin: d3,
+      heureDebut: '19:30',
+      heureFin: '23:00',
       datesProposees: {
         create: [
           { jour: d1, statut: 'validee' },
@@ -67,18 +79,27 @@ async function semerDonneesDemo() {
           { jour: dContreProposition, statut: 'en_attente', proposeParPrenom: 'Jacques' },
         ],
       },
+      lieuxProposes: {
+        create: [
+          { nom: 'Restaurant Chez Papa', statut: 'valide', proposeParPrenom: 'Maxence' },
+          { nom: 'Restaurant La Locanda', statut: 'en_attente', proposeParPrenom: 'Jacques' },
+        ],
+      },
     },
+    include: { lieuxProposes: true },
   });
+  const [lieuChezPapaResto] = evenementDatesPrecises.lieuxProposes.filter((l) => l.statut === 'valide');
 
   for (const vote of [
-    { prenom: 'Maxence', jours: [d1, d2, d3] },
-    { prenom: 'Alex', jours: [d2, d3] },
+    { prenom: 'Maxence', jours: [d1, d2, d3], lieux: [lieuChezPapaResto.id] },
+    { prenom: 'Alex', jours: [d2, d3], lieux: [lieuChezPapaResto.id] },
   ]) {
     await prisma.participant.create({
       data: {
         evenementId: evenementDatesPrecises.id,
         prenom: vote.prenom,
         dispos: { create: vote.jours.map((jour) => ({ jour })) },
+        votesLieu: { create: vote.lieux.map((lieuProposeId) => ({ lieuProposeId })) },
       },
     });
   }

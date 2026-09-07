@@ -4,7 +4,7 @@
 <div class="entete-sortie">
   <div>
     <h1 class="titre-app titre-sortie"><%= evenement.titre %></h1>
-    <p class="organise-par">Organisé par <%= evenement.createurPrenom %></p>
+    <p class="organise-par">Organisé par <%= evenement.createurPrenom %><% if (plageHeures) { %> · <%= plageHeures %><% } %></p>
   </div>
   <% if (estOrganisateur) { %>
     <p class="badge-role">Organisateur</p>
@@ -14,6 +14,11 @@
 <% if (evenement.statut === 'confirme') { %>
   <div class="bandeau-confirme">
     ✅ Sortie confirmée pour le <strong><%= formaterJourLong(evenement.jourValide) %></strong>
+  </div>
+<% } %>
+<% if (evenement.lieuValideId) { %>
+  <div class="bandeau-confirme">
+    📍 Lieu confirmé : <strong><%= lieuxListe.find(function(l){ return l.id === evenement.lieuValideId }).nom %></strong>
   </div>
 <% } %>
 
@@ -37,6 +42,15 @@
     <% }) %>
   </div>
 
+  <% if (lieuxListe.length > 0) { %>
+    <p class="aide">Quel(s) lieu(x) te vont ?</p>
+    <div class="pilules-lieux" id="pilules-lieux-perso">
+      <% lieuxListe.forEach(function(l) { %>
+        <button type="button" class="pilule-lieu" data-lieu="<%= l.id %>"><%= l.nom %></button>
+      <% }) %>
+    </div>
+  <% } %>
+
   <button type="button" class="bouton bouton-principal bouton-pleine-largeur" id="bouton-enregistrer">
     Enregistrer mes disponibilités
   </button>
@@ -52,6 +66,15 @@
       </div>
     </form>
   <% } %>
+
+  <form method="post" action="/e/<%= evenement.id %>/contre-proposition-lieu" id="formulaire-contre-proposition-lieu" class="bloc-contre-proposition">
+    <p class="aide">Un autre lieu à proposer ?</p>
+    <div class="ligne-contre-proposition">
+      <input type="text" name="nom" placeholder="Nom du lieu" maxlength="120" required />
+      <input type="hidden" name="prenom" id="champ-prenom-contre-proposition-lieu" />
+      <button type="submit" class="bouton bouton-secondaire">Proposer</button>
+    </div>
+  </form>
 </section>
 
 <section class="carte">
@@ -60,22 +83,28 @@
     <% if (totalParticipants === 0) { %>
       Personne n'a encore voté.
     <% } else { %>
-      <%= totalParticipants %> participant<%= totalParticipants > 1 ? 's' : '' %> ont voté. Plus la case est foncée, plus il y a de monde ce jour-là.
+      <%= totalParticipants %> participant<%= totalParticipants > 1 ? 's' : '' %> ont voté.
     <% } %>
   </p>
 
-  <div class="calendrier">
-    <% joursAffiches.forEach(function(j) { %>
-      <% if (j.premierDuMois) { %><div class="entete-mois"><%= j.moisLabel %></div><% } %>
-      <div class="case-jour case-jour-lecture
-        <%= j.estValide ? 'case-jour-validee' : 'intensite-' + j.intensite %>
-        <%= (j.estMeilleur && evenement.statut !== 'confirme') ? 'case-jour-meilleure' : '' %>">
-        <span class="case-jour-semaine"><%= j.jourSemaine %></span>
-        <span class="case-jour-nombre"><%= j.jourNombre %></span>
-        <% if (j.nombreDispos > 0) { %><span class="case-jour-compte"><%= j.nombreDispos %></span><% } %>
-      </div>
-    <% }) %>
-  </div>
+  <% if (joursListe.length === 0) { %>
+    <p class="aide">Aucun vote de date pour l'instant.</p>
+  <% } else { %>
+    <div class="liste-votes">
+      <% joursListe.forEach(function(j) { %>
+        <%- include('partials/ligne-vote', { libelle: j.libelleCourt, pourcentage: j.pourcentage, compteTexte: j.compteTexte, estMeilleur: j.estMeilleur, estValide: j.estValide }) %>
+      <% }) %>
+    </div>
+  <% } %>
+
+  <% if (lieuxListe.length > 0) { %>
+    <h3 class="titre-sous-section">Lieux</h3>
+    <div class="liste-votes">
+      <% lieuxListe.forEach(function(l) { %>
+        <%- include('partials/ligne-vote', { libelle: l.nom, pourcentage: l.pourcentage, compteTexte: l.compteTexte, estMeilleur: l.estMeilleur, estValide: l.estValide }) %>
+      <% }) %>
+    </div>
+  <% } %>
 
   <% if (participants.length > 0) { %>
     <p class="liste-participants">
@@ -86,7 +115,7 @@
 
 <% if (estOrganisateur && datesEnAttente && datesEnAttente.length > 0) { %>
 <section class="carte">
-  <h2 class="titre-section">Contre-propositions en attente</h2>
+  <h2 class="titre-section">Contre-propositions de dates en attente</h2>
   <% datesEnAttente.forEach(function(dp) { %>
     <div class="ligne-attente">
       <span class="ligne-attente-texte"><%= formaterJourLong(dp.jour) %><br><span class="ligne-attente-auteur">proposé par <%= dp.proposeParPrenom %></span></span>
@@ -95,6 +124,25 @@
           <button type="submit" class="bouton-pastille bouton-pastille-accepter">Accepter</button>
         </form>
         <form method="post" action="/e/<%= evenement.id %>/dates-proposees/<%= dp.id %>/refuser">
+          <button type="submit" class="bouton-pastille bouton-pastille-refuser">Refuser</button>
+        </form>
+      </div>
+    </div>
+  <% }) %>
+</section>
+<% } %>
+
+<% if (estOrganisateur && lieuxEnAttente && lieuxEnAttente.length > 0) { %>
+<section class="carte">
+  <h2 class="titre-section">Contre-propositions de lieu en attente</h2>
+  <% lieuxEnAttente.forEach(function(lp) { %>
+    <div class="ligne-attente">
+      <span class="ligne-attente-texte"><%= lp.nom %><br><span class="ligne-attente-auteur">proposé par <%= lp.proposeParPrenom %></span></span>
+      <div class="boutons-attente">
+        <form method="post" action="/e/<%= evenement.id %>/lieux-proposes/<%= lp.id %>/accepter">
+          <button type="submit" class="bouton-pastille bouton-pastille-accepter">Accepter</button>
+        </form>
+        <form method="post" action="/e/<%= evenement.id %>/lieux-proposes/<%= lp.id %>/refuser">
           <button type="submit" class="bouton-pastille bouton-pastille-refuser">Refuser</button>
         </form>
       </div>
@@ -123,6 +171,25 @@
       <button type="submit" class="bouton bouton-valider bouton-pleine-largeur">Valider ce jour</button>
     </form>
   <% } %>
+</section>
+<% } %>
+
+<% if (estOrganisateur && lieuxListe.length > 0 && !evenement.lieuValideId) { %>
+<section class="carte">
+  <h2 class="titre-section">Valider le lieu retenu</h2>
+  <form method="post" action="/e/<%= evenement.id %>/valider-lieu">
+    <label class="champ">
+      <span>Lieu à confirmer</span>
+      <select name="lieuId" required>
+        <% lieuxListe.forEach(function(l) { %>
+          <option value="<%= l.id %>" <%= l.estMeilleur ? 'selected' : '' %>>
+            <%= l.nom %> — <%= l.compteTexte %>
+          </option>
+        <% }) %>
+      </select>
+    </label>
+    <button type="submit" class="bouton bouton-valider bouton-pleine-largeur">Valider ce lieu</button>
+  </form>
 </section>
 <% } %>
 

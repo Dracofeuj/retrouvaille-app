@@ -1,0 +1,5 @@
+<div class="ligne-vote <%= estValide ? 'ligne-vote-validee' : '' %> <%= (estMeilleur && !estValide) ? 'ligne-vote-meilleure' : '' %>">
+  <div class="ligne-vote-barre" style="width: <%= pourcentage %>%"></div>
+  <span class="ligne-vote-libelle"><%= libelle %></span>
+  <span class="ligne-vote-compte"><%= estValide ? '✅ Confirmé' : compteTexte %></span>
+</div>
