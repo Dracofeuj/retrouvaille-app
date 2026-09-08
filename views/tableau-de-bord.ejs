@@ -1,0 +1,40 @@
+<% titre = 'Mes sorties' %>
+<%- include('partials/head') %>
+
+<div class="entete-sortie">
+  <h1 class="titre-app">Mes sorties</h1>
+  <a href="/deconnexion" class="lien-comme-bouton">Déconnexion</a>
+</div>
+<p class="sous-titre"><%= utilisateur.email %></p>
+
+<a href="/nouvelle-sortie" class="bouton bouton-principal bouton-pleine-largeur bouton-nouvelle-sortie-dashboard">+ Nouvelle sortie</a>
+
+<h2 class="titre-section">À venir</h2>
+<% if (aVenir.length === 0) { %>
+  <p class="aide">Rien de prévu pour l'instant.</p>
+<% } else { %>
+  <div class="liste-votes liste-evenements-dashboard">
+    <% aVenir.forEach(function(ev) { %>
+      <a href="/e/<%= ev.id %>" class="ligne-vote ligne-evenement-carte">
+        <span class="ligne-vote-libelle"><%= ev.titre %></span>
+        <span class="ligne-vote-compte"><%= ev.statut === 'confirme' ? formaterJourLong(ev.jourValide) : 'en vote' %></span>
+      </a>
+    <% }) %>
+  </div>
+<% } %>
+
+<h2 class="titre-section">Passées</h2>
+<% if (passes.length === 0) { %>
+  <p class="aide">Aucune sortie passée pour l'instant.</p>
+<% } else { %>
+  <div class="liste-votes">
+    <% passes.forEach(function(ev) { %>
+      <a href="/e/<%= ev.id %>" class="ligne-vote ligne-evenement-carte">
+        <span class="ligne-vote-libelle"><%= ev.titre %></span>
+        <span class="ligne-vote-compte"><%= ev.statut === 'confirme' ? formaterJourLong(ev.jourValide) : 'non confirmée' %></span>
+      </a>
+    <% }) %>
+  </div>
+<% } %>
+
+<%- include('partials/foot') %>

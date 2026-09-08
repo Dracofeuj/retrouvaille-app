@@ -4,14 +4,18 @@ Application web pour caler une sortie entre amis : un organisateur propose
 une sortie (des dates précises, ou un calendrier ouvert), avec une heure et
 un ou plusieurs lieux facultatifs ; chacun vote ses disponibilités et ses
 lieux préférés, le meilleur ressort tout seul dans une liste triée,
-l'organisateur valide. Pas de compte, pas de messagerie, un seul lien pour
-tout le monde. Design neumorphique sombre (surfaces embossées, accent vert).
+l'organisateur valide. Un compte est facultatif (connexion par code email,
+sans mot de passe) : sans compte, tout marche pareil via un lien unique par
+sortie ; avec un compte, un tableau de bord regroupe ses sorties à
+venir/passées. Design neumorphique sombre (surfaces embossées, accent vert).
 
-Cette version couvre **uniquement la boucle de vote** (créer une sortie
-dans l'un des deux modes avec heure/lieu, voter, contre-proposer une date ou
-un lieu, voir le résultat, valider). Le reste du produit (comptes, groupes,
-albums photo...) est décrit dans `CONTEXTE-PRODUIT.md` mais n'est pas
-construit ici.
+Cette version couvre la boucle de vote (créer une sortie dans l'un des deux
+modes avec heure/lieu, voter, contre-proposer une date ou un lieu, voir le
+résultat, valider) et une première version des comptes (connexion par code,
+tableau de bord, navigation par onglets). Les groupes ("Cercle") sont
+présents dans la navigation mais pas encore construits — écran "Bientôt
+disponible" pour l'instant. Voir `CONTEXTE-PRODUIT.md` pour la vision
+complète.
 
 ## Lancer le projet en local
 
@@ -47,9 +51,12 @@ prisma/schema.prisma    structure de la base de données
 prisma/seed.js          creation des donnees de demonstration
 lib/dates.js            manipulation des dates (format AAAA-MM-JJ, sans fuseau horaire)
 lib/heatmap.js          comptage des votes (dates et lieux) et calcul du "meilleur"
-lib/organisateur.js     reconnaissance du createur via un cookie (lien unique)
+lib/organisateur.js     reconnaissance de l'organisateur (compte ou cookie)
+lib/auth.js             connexion par code email, sessions
+lib/cookies.js          lecture/ecriture de cookies (partage par organisateur.js et auth.js)
 lib/db.js               connexion a la base de donnees (Prisma)
 views/                  pages HTML (moteur de template EJS)
+views/partials/nav-bas.ejs  navigation en bas d'ecran (3 onglets)
 public/css/style.css    tout le style visuel
 public/js/              interactivite cote navigateur (peindre les jours, copier un lien, formulaire de creation)
 ```
@@ -85,20 +92,51 @@ décalages selon le fuseau horaire du visiteur ou du serveur.
 
 ## Lien unique et reconnaissance de l'organisateur
 
-Il n'y a plus qu'un seul lien par sortie (`/e/:id`). Au moment de la
-création, le serveur pose un cookie (`org_<id>`, invisible, "HttpOnly") sur
-le navigateur du créateur, contenant le `jetonCreateur` de l'événement. À
-chaque visite de `/e/:id`, le serveur compare ce cookie au jeton stocké en
-base (`lib/organisateur.js`) : s'ils correspondent, la personne voit les
-actions d'organisateur (valider le jour, accepter/refuser une
-contre-proposition).
+Il n'y a qu'un seul lien par sortie (`/e/:id`). Deux façons d'être reconnu
+comme organisateur, qui cohabitent (`lib/organisateur.js`) :
+- **Avec un compte** : `evenement.createurUserId` est comparé à
+  l'utilisateur connecté (fonctionne sur n'importe quel appareil).
+- **Sans compte** : un cookie (`org_<id>`, invisible, "HttpOnly") est posé
+  sur le navigateur du créateur au moment de la création, et compare au
+  `jetonCreateur` de l'événement à chaque visite. Ne marche que sur le même
+  appareil/navigateur.
 
-**Limite assumée** : ça ne marche que sur le même appareil/navigateur — si
-le créateur change d'appareil ou vide son navigateur, il perd ce statut. La
-reconnaissance fiable sur tous les appareils viendra avec les comptes
-utilisateur (tranche suivante) ; le code est écrit pour qu'on puisse alors
-ajouter une vérification par compte (`evenement.createurUserId`) à côté du
-cookie, sans rien casser.
+## Comptes et connexion
+
+Connexion par code à usage unique envoyé par email, sans mot de passe
+(`lib/auth.js`) : un email crée ou retrouve un `User`, un `CodeConnexion` à
+6 chiffres est généré (10 min de validité), sa vérification ouvre une
+`Session` (30 jours) dont l'id est stocké dans un cookie `session`.
+
+**Mode test actuel** : au lieu d'envoyer un vrai email, le code est affiché
+directement à l'écran (bandeau "Mode test" sur la page `/connexion/code`).
+Pour brancher un vrai envoi d'email, remplacer l'appel à
+`genererEtEnregistrerCode` dans la route `POST /connexion/code` par un envoi
+via un prestataire (ex: [Resend](https://resend.com)) au lieu de renvoyer le
+code en clair à la vue — le reste (vérification, session) ne change pas.
+
+Les boutons "Continuer avec Google/Apple" sont désactivés (`disabled`) en
+attendant que ces intégrations OAuth soient mises en place — Google demande
+une configuration Google Cloud Console (gratuite), Apple un compte
+développeur payant (99$/an).
+
+Un participant qui vote (ou un créateur qui crée une sortie) alors qu'il est
+connecté voit son `userId` rattaché (`Participant.userId` /
+`Evenement.createurUserId`), ce qui fait apparaître la sortie dans son
+tableau de bord (`/`, vue `tableau-de-bord.ejs`) — sans rien changer pour
+quelqu'un qui n'est pas connecté.
+
+## Navigation
+
+Trois onglets fixés en bas d'écran (`views/partials/nav-bas.ejs`, inclus par
+`partials/foot.ejs`) : **Accueil** (`/`, tableau de bord ou écran invité),
+**Événement** (`/nouvelle-sortie`, création — accessible sans compte), et
+**Cercle** (`/cercle`, groupes — nécessite un compte, redirige vers
+`/connexion` sinon). La nav est masquée sur les écrans de connexion via le
+local `cacherNav` passé explicitement par chaque route dans `server.js` (ne
+jamais l'assigner directement dans un template EJS : avec `with(locals)`,
+une assignation sur une variable absente des locals fuit en variable globale
+Node et contaminerait les autres requêtes du même processus).
 
 ## Passer de SQLite à PostgreSQL plus tard
 
@@ -120,10 +158,13 @@ Rien d'autre à changer dans le code de l'application.
 - Les pages (`views/*.ejs`) sont du HTML serveur classique, pas de framework
   frontend : la seule interactivité (peindre les jours, copier un lien) est
   dans `public/js/`, en JavaScript simple sans dépendance.
-- Il n'y a pas encore de compte utilisateur : un "participant" est identifié
-  uniquement par son prénom sur un événement donné (`@@unique([evenementId, prenom])`
-  dans `prisma/schema.prisma`). Le doc `CONTEXTE-PRODUIT.md` prévoit d'ajouter
-  des comptes plus tard, avec un `userId` optionnel sur `Participant`.
+- Un "participant" reste identifié par son prénom sur un événement donné
+  (`@@unique([evenementId, prenom])`) qu'il ait un compte ou non — le compte
+  ne fait qu'ajouter un `userId` optionnel en plus, jamais une dépendance.
+- L'onglet "Cercle" (groupes) est un écran "Bientôt disponible"
+  (`views/cercle-bientot.ejs`) : le modèle de données pour les groupes n'a
+  pas encore été construit. Voir `CONTEXTE-PRODUIT.md` pour la vision
+  (cercles persistants, double rattachement evenement/groupe).
 
 ## Mettre en ligne (déploiement)
 

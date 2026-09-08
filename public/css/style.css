@@ -51,7 +51,7 @@ body {
 .page {
   max-width: 480px;
   margin: 0 auto;
-  padding: 28px 20px 56px;
+  padding: 28px 20px calc(56px + 76px);
 }
 
 .titre-app {
@@ -406,6 +406,16 @@ body {
   flex-shrink: 0;
 }
 
+.bouton:disabled {
+  opacity: 0.45;
+  cursor: default;
+  box-shadow: var(--ombre-legere);
+}
+
+.bouton-pleine-largeur + .bouton-pleine-largeur {
+  margin-top: 10px;
+}
+
 .ligne-attente {
   display: flex;
   align-items: center;
@@ -738,4 +748,78 @@ body {
 @keyframes overlay-validation-disparition {
   from { opacity: 1; }
   to { opacity: 0; }
+}
+
+/* Navigation en bas d'ecran (3 onglets) */
+
+.nav-bas {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 500;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface);
+  box-shadow: 0 -6px 16px var(--ombre-sombre);
+}
+
+.nav-bas-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 4px;
+  border-radius: var(--rayon-petit);
+  color: var(--texte-att);
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.nav-bas-icone {
+  font-size: 20px;
+}
+
+.nav-bas-item-actif {
+  color: var(--accent);
+  background: var(--accent-fond);
+}
+
+/* Accueil invite / connexion */
+
+.carte-accueil-invite {
+  text-align: center;
+}
+
+.bandeau-mode-test {
+  background: var(--jaune-fond);
+  color: var(--jaune-selection);
+  border-radius: var(--rayon-petit);
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  box-shadow: var(--ombre-creuse);
+}
+
+.carte-bientot {
+  text-align: center;
+}
+
+/* Tableau de bord */
+
+.bouton-nouvelle-sortie-dashboard {
+  margin-bottom: 24px;
+}
+
+.liste-evenements-dashboard {
+  margin-bottom: 24px;
+}
+
+a.ligne-evenement-carte {
+  text-decoration: none;
+  cursor: pointer;
 }

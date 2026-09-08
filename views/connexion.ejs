@@ -1,0 +1,34 @@
+<% titre = 'Connexion' %>
+<%- include('partials/head') %>
+
+<h1 class="titre-app">Connexion</h1>
+<% if (raison === 'cercle') { %>
+  <p class="sous-titre">Connecte-toi pour accéder à tes cercles.</p>
+<% } else { %>
+  <p class="sous-titre">Reçois un code par email, aucun mot de passe à retenir.</p>
+<% } %>
+
+<form class="carte" method="post" action="/connexion/code">
+  <% if (erreur) { %>
+    <p class="message-erreur"><%= erreur %></p>
+  <% } %>
+  <label class="champ">
+    <span>Ton email</span>
+    <input type="email" name="email" placeholder="toi@exemple.com" required autofocus />
+  </label>
+  <button type="submit" class="bouton bouton-principal bouton-pleine-largeur">Envoyer le code</button>
+</form>
+
+<div class="carte">
+  <p class="aide">Ou continue avec :</p>
+  <button type="button" class="bouton bouton-secondaire bouton-pleine-largeur" disabled title="Bientôt disponible">
+    Continuer avec Google — bientôt disponible
+  </button>
+  <button type="button" class="bouton bouton-secondaire bouton-pleine-largeur" disabled title="Bientôt disponible">
+    Continuer avec Apple — bientôt disponible
+  </button>
+</div>
+
+<p class="lien-discret"><a href="/nouvelle-sortie">Continuer sans compte</a></p>
+
+<%- include('partials/foot') %>

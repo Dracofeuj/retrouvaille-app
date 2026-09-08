@@ -16,6 +16,7 @@ const {
 } = require('./lib/dates');
 const { calculerVotesDates, calculerVotesLieux } = require('./lib/heatmap');
 const { estOrganisateurPourEvenement, definirCookieOrganisateur } = require('./lib/organisateur');
+const { genererEtEnregistrerCode, verifierCodeEtConnecter, obtenirUtilisateurConnecte, deconnecter } = require('./lib/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -54,19 +55,43 @@ function formatCompteVotes(n) {
   return `${n} ont voté`;
 }
 
-// ---------- Page d'accueil : creer une sortie ----------
-
-async function donneesAccueil(erreur) {
-  const debutParDefaut = aujourdhui();
-  const exemples = erreur ? [] : await prisma.evenement.findMany({ orderBy: { createdAt: 'asc' }, take: 2 });
-  return { debutParDefaut, erreur, exemples, optionsHeure: genererOptionsHeure() };
-}
+// ---------- Accueil : ecran invite, tableau de bord si connecte ----------
 
 app.get('/', async (req, res) => {
-  res.render('accueil', await donneesAccueil(null));
+  const utilisateur = await obtenirUtilisateurConnecte(req);
+
+  if (!utilisateur) {
+    return res.render('accueil-invite', { ongletActif: 'accueil', cacherNav: false });
+  }
+
+  const evenements = await prisma.evenement.findMany({
+    where: {
+      OR: [{ createurUserId: utilisateur.id }, { participants: { some: { userId: utilisateur.id } } }],
+    },
+    orderBy: { dateDebut: 'asc' },
+  });
+
+  const aujourdhuiTexte = aujourdhui();
+  const aVenir = evenements.filter((e) => e.dateFin >= aujourdhuiTexte);
+  const passes = evenements.filter((e) => e.dateFin < aujourdhuiTexte).reverse();
+
+  res.render('tableau-de-bord', { utilisateur, aVenir, passes, formaterJourLong, ongletActif: 'accueil', cacherNav: false });
+});
+
+// ---------- Creer une sortie (accessible sans compte) ----------
+
+async function donneesNouvelleSortie(erreur) {
+  const debutParDefaut = aujourdhui();
+  const exemples = erreur ? [] : await prisma.evenement.findMany({ orderBy: { createdAt: 'asc' }, take: 2 });
+  return { debutParDefaut, erreur, exemples, optionsHeure: genererOptionsHeure(), ongletActif: 'evenement', cacherNav: false };
+}
+
+app.get('/nouvelle-sortie', async (req, res) => {
+  res.render('nouvelle-sortie', await donneesNouvelleSortie(null));
 });
 
 app.post('/evenements', async (req, res) => {
+  const utilisateur = await obtenirUtilisateurConnecte(req);
   const titre = (req.body.titre || '').trim();
   const createurPrenom = (req.body.createurPrenom || '').trim();
   const mode = req.body.mode === 'calendrier_libre' ? 'calendrier_libre' : 'dates_precises';
@@ -77,13 +102,14 @@ app.post('/evenements', async (req, res) => {
   const nomsLieux = [...new Set(lieuxBruts.map((l) => l.trim()).filter(Boolean))];
 
   async function erreurCreation(message) {
-    res.status(400).render('accueil', await donneesAccueil(message));
+    res.status(400).render('nouvelle-sortie', await donneesNouvelleSortie(message));
   }
 
   if (!titre) return erreurCreation('Merci de donner un titre a la sortie.');
   if (!createurPrenom) return erreurCreation('Merci d\'indiquer ton prenom.');
 
   let evenement;
+  const createurUserId = utilisateur ? utilisateur.id : undefined;
   const lieuxProposesData = { create: nomsLieux.map((nom) => ({ nom, statut: 'valide', proposeParPrenom: createurPrenom })) };
 
   if (mode === 'calendrier_libre') {
@@ -94,7 +120,7 @@ app.post('/evenements', async (req, res) => {
     }
 
     evenement = await prisma.evenement.create({
-      data: { titre, mode, createurPrenom, dateDebut, dateFin, heureDebut, heureFin, lieuxProposes: lieuxProposesData },
+      data: { titre, mode, createurPrenom, createurUserId, dateDebut, dateFin, heureDebut, heureFin, lieuxProposes: lieuxProposesData },
     });
   } else {
     // mode === 'dates_precises' : une ou plusieurs dates saisies a la main
@@ -110,6 +136,7 @@ app.post('/evenements', async (req, res) => {
         titre,
         mode,
         createurPrenom,
+        createurUserId,
         heureDebut,
         heureFin,
         dateDebut: datesValides[0],
@@ -122,7 +149,8 @@ app.post('/evenements', async (req, res) => {
     });
   }
 
-  // Pose le cookie qui reconnaitra ce navigateur comme celui de l'organisateur.
+  // Pose le cookie qui reconnaitra ce navigateur comme celui de l'organisateur
+  // (utile meme si connecte : ca marche aussi si la session expire).
   definirCookieOrganisateur(res, evenement);
   res.redirect(`/creation-reussie/${evenement.id}`);
 });
@@ -133,6 +161,8 @@ app.get('/creation-reussie/:id', async (req, res) => {
 
   res.render('creation-reussie', {
     lienPartage: `${req.protocol}://${req.get('host')}/e/${evenement.id}`,
+    ongletActif: 'evenement',
+    cacherNav: false,
   });
 });
 
@@ -145,7 +175,8 @@ app.get('/e/:id', async (req, res) => {
   const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
   if (!evenement) return res.status(404).send('Sortie introuvable. Verifie le lien.');
 
-  const estOrganisateur = estOrganisateurPourEvenement(req, evenement);
+  const utilisateur = await obtenirUtilisateurConnecte(req);
+  const estOrganisateur = estOrganisateurPourEvenement(req, evenement, utilisateur);
   const joursPeriode = await obtenirJoursVotables(evenement);
   const lieuxValides = await obtenirLieuxVotables(evenement);
 
@@ -226,6 +257,8 @@ app.get('/e/:id', async (req, res) => {
     texteValidation,
     plageHeures: formaterPlageHeures(evenement.heureDebut, evenement.heureFin),
     lienPartage: `${req.protocol}://${req.get('host')}/e/${evenement.id}`,
+    ongletActif: 'evenement',
+    cacherNav: false,
   });
 });
 
@@ -237,6 +270,7 @@ app.post('/e/:id/dispos', async (req, res) => {
   const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
   if (!evenement) return res.status(404).json({ erreur: 'Sortie introuvable.' });
 
+  const utilisateur = await obtenirUtilisateurConnecte(req);
   const prenom = (req.body.prenom || '').trim();
   const jours = Array.isArray(req.body.jours) ? req.body.jours : [];
 
@@ -247,10 +281,11 @@ app.post('/e/:id/dispos', async (req, res) => {
   const joursValides = new Set(await obtenirJoursVotables(evenement));
   const joursFiltres = jours.filter((jour) => joursValides.has(jour));
 
+  const userId = utilisateur ? utilisateur.id : undefined;
   const participant = await prisma.participant.upsert({
     where: { evenementId_prenom: { evenementId: evenement.id, prenom } },
-    create: { evenementId: evenement.id, prenom },
-    update: {},
+    create: { evenementId: evenement.id, prenom, userId },
+    update: { userId },
   });
 
   await prisma.dispo.deleteMany({ where: { participantId: participant.id } });
@@ -282,6 +317,7 @@ app.post('/e/:id/votes-lieu', async (req, res) => {
   const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
   if (!evenement) return res.status(404).json({ erreur: 'Sortie introuvable.' });
 
+  const utilisateur = await obtenirUtilisateurConnecte(req);
   const prenom = (req.body.prenom || '').trim();
   const lieuxChoisis = Array.isArray(req.body.lieux) ? req.body.lieux : [];
 
@@ -292,10 +328,11 @@ app.post('/e/:id/votes-lieu', async (req, res) => {
   const lieuxValides = new Set((await obtenirLieuxVotables(evenement)).map((l) => l.id));
   const lieuxFiltres = lieuxChoisis.filter((id) => lieuxValides.has(id));
 
+  const userId = utilisateur ? utilisateur.id : undefined;
   const participant = await prisma.participant.upsert({
     where: { evenementId_prenom: { evenementId: evenement.id, prenom } },
-    create: { evenementId: evenement.id, prenom },
-    update: {},
+    create: { evenementId: evenement.id, prenom, userId },
+    update: { userId },
   });
 
   await prisma.voteLieu.deleteMany({ where: { participantId: participant.id } });
@@ -344,7 +381,8 @@ app.post('/e/:id/contre-proposition', async (req, res) => {
 app.post('/e/:id/dates-proposees/:dateProposeeId/accepter', async (req, res) => {
   const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
   if (!evenement) return res.status(404).send('Sortie introuvable.');
-  if (!estOrganisateurPourEvenement(req, evenement)) {
+  const utilisateur = await obtenirUtilisateurConnecte(req);
+  if (!estOrganisateurPourEvenement(req, evenement, utilisateur)) {
     return res.status(403).send('Seul l\'organisateur peut accepter une contre-proposition.');
   }
 
@@ -359,7 +397,8 @@ app.post('/e/:id/dates-proposees/:dateProposeeId/accepter', async (req, res) => 
 app.post('/e/:id/dates-proposees/:dateProposeeId/refuser', async (req, res) => {
   const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
   if (!evenement) return res.status(404).send('Sortie introuvable.');
-  if (!estOrganisateurPourEvenement(req, evenement)) {
+  const utilisateur = await obtenirUtilisateurConnecte(req);
+  if (!estOrganisateurPourEvenement(req, evenement, utilisateur)) {
     return res.status(403).send('Seul l\'organisateur peut refuser une contre-proposition.');
   }
 
@@ -393,7 +432,8 @@ app.post('/e/:id/contre-proposition-lieu', async (req, res) => {
 app.post('/e/:id/lieux-proposes/:lieuProposeId/accepter', async (req, res) => {
   const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
   if (!evenement) return res.status(404).send('Sortie introuvable.');
-  if (!estOrganisateurPourEvenement(req, evenement)) {
+  const utilisateur = await obtenirUtilisateurConnecte(req);
+  if (!estOrganisateurPourEvenement(req, evenement, utilisateur)) {
     return res.status(403).send('Seul l\'organisateur peut accepter une contre-proposition.');
   }
 
@@ -408,7 +448,8 @@ app.post('/e/:id/lieux-proposes/:lieuProposeId/accepter', async (req, res) => {
 app.post('/e/:id/lieux-proposes/:lieuProposeId/refuser', async (req, res) => {
   const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
   if (!evenement) return res.status(404).send('Sortie introuvable.');
-  if (!estOrganisateurPourEvenement(req, evenement)) {
+  const utilisateur = await obtenirUtilisateurConnecte(req);
+  if (!estOrganisateurPourEvenement(req, evenement, utilisateur)) {
     return res.status(403).send('Seul l\'organisateur peut refuser une contre-proposition.');
   }
 
@@ -427,7 +468,8 @@ app.post('/e/:id/lieux-proposes/:lieuProposeId/refuser', async (req, res) => {
 app.post('/e/:id/valider-sortie', async (req, res) => {
   const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
   if (!evenement) return res.status(404).send('Sortie introuvable.');
-  if (!estOrganisateurPourEvenement(req, evenement)) {
+  const utilisateur = await obtenirUtilisateurConnecte(req);
+  if (!estOrganisateurPourEvenement(req, evenement, utilisateur)) {
     return res.status(403).send('Seul l\'organisateur peut valider la sortie.');
   }
 
@@ -453,6 +495,50 @@ app.post('/e/:id/valider-sortie', async (req, res) => {
   });
 
   res.redirect(`/e/${evenement.id}`);
+});
+
+// ---------- Connexion par code email (mode test : le code est affiche a
+// l'ecran au lieu d'etre envoye par email, voir lib/auth.js) ----------
+
+app.get('/connexion', async (req, res) => {
+  const utilisateur = await obtenirUtilisateurConnecte(req);
+  if (utilisateur) return res.redirect('/');
+  res.render('connexion', { erreur: null, raison: req.query.raison || null, cacherNav: true });
+});
+
+app.post('/connexion/code', async (req, res) => {
+  const email = (req.body.email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).render('connexion', { erreur: 'Merci d\'indiquer un email valide.', raison: null, cacherNav: true });
+  }
+
+  const code = await genererEtEnregistrerCode(email);
+  res.render('connexion-code', { email, code, erreur: null, cacherNav: true });
+});
+
+app.post('/connexion/verifier', async (req, res) => {
+  const email = (req.body.email || '').trim().toLowerCase();
+  const code = (req.body.code || '').trim();
+
+  const utilisateur = await verifierCodeEtConnecter(res, email, code);
+  if (!utilisateur) {
+    return res.status(400).render('connexion-code', { email, code: null, erreur: 'Code invalide ou expire. Redemande-en un.', cacherNav: true });
+  }
+
+  res.redirect('/');
+});
+
+app.get('/deconnexion', async (req, res) => {
+  await deconnecter(req, res);
+  res.redirect('/');
+});
+
+// ---------- Cercle (groupes) : necessite un compte, pas encore construit ----------
+
+app.get('/cercle', async (req, res) => {
+  const utilisateur = await obtenirUtilisateurConnecte(req);
+  if (!utilisateur) return res.redirect('/connexion?raison=cercle');
+  res.render('cercle-bientot', { ongletActif: 'cercle', cacherNav: false });
 });
 
 // ---------- Demarrage ----------

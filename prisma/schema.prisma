@@ -24,11 +24,14 @@ model Evenement {
   lieuValideId   String? // id du LieuPropose retenu, rempli quand confirme
   createurPrenom String
   // Jeton compare au cookie pose sur le navigateur du createur pour le
-  // reconnaitre comme organisateur (voir lib/organisateur.js). Plus tard,
-  // avec des comptes, ce role pourra s'appuyer sur un userId a la place.
-  jetonCreateur String   @unique @default(cuid())
-  createdAt     DateTime @default(now())
+  // reconnaitre comme organisateur (voir lib/organisateur.js) quand il n'est
+  // pas connecte. S'il est connecte, createurUserId prend le relai (voir
+  // lib/auth.js) : les deux mecanismes cohabitent sans se gener.
+  jetonCreateur   String   @unique @default(cuid())
+  createurUserId  String?
+  createdAt       DateTime @default(now())
 
+  createurUser   User?          @relation(fields: [createurUserId], references: [id])
   participants   Participant[]
   datesProposees DateProposee[]
   lieuxProposes  LieuPropose[]
@@ -69,14 +72,18 @@ model LieuPropose {
   @@unique([evenementId, nom])
 }
 
-// Une personne qui a vote sur une sortie (invite : juste un prenom, pas de compte).
+// Une personne qui a vote sur une sortie : juste un prenom, pas besoin de
+// compte. Si elle etait connectee au moment du vote, userId la relie a son
+// compte (pour apparaitre dans son tableau de bord) mais rien d'autre ne change.
 model Participant {
   id          String   @id @default(cuid())
   evenementId String
   prenom      String
+  userId      String?
   createdAt   DateTime @default(now())
 
   evenement Evenement  @relation(fields: [evenementId], references: [id], onDelete: Cascade)
+  user      User?      @relation(fields: [userId], references: [id])
   dispos    Dispo[]
   votesLieu VoteLieu[]
 
@@ -104,4 +111,39 @@ model VoteLieu {
   lieuPropose LieuPropose @relation(fields: [lieuProposeId], references: [id], onDelete: Cascade)
 
   @@unique([participantId, lieuProposeId])
+}
+
+// ---------- Comptes (connexion par code email, sans mot de passe) ----------
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  evenementsCrees Evenement[]
+  participations  Participant[]
+  sessions        Session[]
+}
+
+// Code a usage unique envoye par email pour se connecter (en mode test pour
+// l'instant, le code est affiche directement a l'ecran au lieu d'etre
+// envoye par email - voir lib/auth.js).
+model CodeConnexion {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  expireA   DateTime
+  utilise   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// Une session ouverte : son id est stocke dans un cookie "session" sur le
+// navigateur de l'utilisateur.
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  expireA   DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

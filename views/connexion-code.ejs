@@ -1,0 +1,27 @@
+<% titre = 'Entre ton code' %>
+<%- include('partials/head') %>
+
+<h1 class="titre-app">Entre ton code</h1>
+<p class="sous-titre">On a "envoyé" un code à <strong><%= email %></strong>.</p>
+
+<% if (code) { %>
+  <div class="bandeau-mode-test">
+    🧪 Mode test — pas de vrai email envoyé. Ton code : <strong><%= code %></strong>
+  </div>
+<% } %>
+
+<form class="carte" method="post" action="/connexion/verifier">
+  <% if (erreur) { %>
+    <p class="message-erreur"><%= erreur %></p>
+  <% } %>
+  <input type="hidden" name="email" value="<%= email %>" />
+  <label class="champ">
+    <span>Code reçu</span>
+    <input type="text" name="code" inputmode="numeric" maxlength="6" placeholder="123456" required autofocus value="<%= code || '' %>" />
+  </label>
+  <button type="submit" class="bouton bouton-principal bouton-pleine-largeur">Valider</button>
+</form>
+
+<p class="lien-discret"><a href="/connexion">Changer d'email</a></p>
+
+<%- include('partials/foot') %>

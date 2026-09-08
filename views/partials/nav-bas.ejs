@@ -1,0 +1,14 @@
+<nav class="nav-bas">
+  <a href="/" class="nav-bas-item <%= (typeof ongletActif !== 'undefined' && ongletActif === 'accueil') ? 'nav-bas-item-actif' : '' %>">
+    <span class="nav-bas-icone">🏠</span>
+    <span>Accueil</span>
+  </a>
+  <a href="/nouvelle-sortie" class="nav-bas-item <%= (typeof ongletActif !== 'undefined' && ongletActif === 'evenement') ? 'nav-bas-item-actif' : '' %>">
+    <span class="nav-bas-icone">📅</span>
+    <span>Événement</span>
+  </a>
+  <a href="/cercle" class="nav-bas-item <%= (typeof ongletActif !== 'undefined' && ongletActif === 'cercle') ? 'nav-bas-item-actif' : '' %>">
+    <span class="nav-bas-icone">👥</span>
+    <span>Cercle</span>
+  </a>
+</nav>
