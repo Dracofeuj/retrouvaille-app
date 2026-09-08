@@ -1,0 +1,30 @@
+<% titre = cercle.nom %>
+<%- include('partials/head') %>
+
+<div class="entete-sortie">
+  <h1 class="titre-app titre-sortie"><%= cercle.nom %></h1>
+</div>
+<p class="sous-titre"><%= cercle.membres.length %> membre<%= cercle.membres.length > 1 ? 's' : '' %></p>
+
+<section class="carte">
+  <h2 class="titre-section">Membres</h2>
+  <div class="liste-votes">
+    <% cercle.membres.forEach(function(m) { %>
+      <div class="ligne-vote">
+        <span class="ligne-vote-libelle"><%= m.nomAffiche || m.user.email %></span>
+      </div>
+    <% }) %>
+  </div>
+</section>
+
+<section class="carte">
+  <h2 class="titre-section">Inviter quelqu'un</h2>
+  <p class="aide">Partage ce lien pour que quelqu'un rejoigne le cercle.</p>
+  <div class="ligne-copie">
+    <input type="text" readonly value="<%= lienInvitation %>" onclick="this.select()" id="champ-lien-cercle" />
+    <button type="button" class="bouton-copier" data-cible="champ-lien-cercle">Copier</button>
+  </div>
+</section>
+
+<script src="/js/copier.js"></script>
+<%- include('partials/foot') %>

@@ -12,6 +12,7 @@
   <% if (erreur) { %>
     <p class="message-erreur"><%= erreur %></p>
   <% } %>
+  <input type="hidden" name="retour" value="<%= retour %>" />
   <label class="champ">
     <span>Ton email</span>
     <input type="email" name="email" placeholder="toi@exemple.com" required autofocus />

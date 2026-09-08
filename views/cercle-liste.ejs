@@ -1,0 +1,31 @@
+<% titre = 'Mes cercles' %>
+<%- include('partials/head') %>
+
+<h1 class="titre-app">Cercle</h1>
+<p class="sous-titre">Tes groupes d'amis et de famille.</p>
+
+<form class="carte" method="post" action="/cercles">
+  <% if (erreur) { %>
+    <p class="message-erreur"><%= erreur %></p>
+  <% } %>
+  <label class="champ">
+    <span>Nouveau cercle</span>
+    <input type="text" name="nom" placeholder="Ex : Amis d'enfance" maxlength="80" required />
+  </label>
+  <button type="submit" class="bouton bouton-principal bouton-pleine-largeur">Créer le cercle</button>
+</form>
+
+<% if (mesCercles.length === 0) { %>
+  <p class="aide">Tu n'as pas encore de cercle. Crée-en un, ou rejoins celui d'un ami via son lien d'invitation.</p>
+<% } else { %>
+  <div class="liste-votes">
+    <% mesCercles.forEach(function(c) { %>
+      <a href="/cercle/<%= c.id %>" class="ligne-vote ligne-evenement-carte">
+        <span class="ligne-vote-libelle"><%= c.nom %></span>
+        <span class="ligne-vote-compte"><%= c._count.membres %> membre<%= c._count.membres > 1 ? 's' : '' %></span>
+      </a>
+    <% }) %>
+  </div>
+<% } %>
+
+<%- include('partials/foot') %>

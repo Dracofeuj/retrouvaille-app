@@ -17,15 +17,24 @@ const {
 const { calculerVotesDates, calculerVotesLieux } = require('./lib/heatmap');
 const { estOrganisateurPourEvenement, definirCookieOrganisateur } = require('./lib/organisateur');
 const { genererEtEnregistrerCode, verifierCodeEtConnecter, obtenirUtilisateurConnecte, deconnecter } = require('./lib/auth');
+const { enregistrerPhoto } = require('./lib/stockage-photos');
+const multer = require('multer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const uploadPhotos = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
 app.set('view engine', 'ejs');
 app.set('views', __dirname + '/views');
 app.use(express.static(__dirname + '/public'));
 app.use(express.urlencoded({ extended: false })); // formulaires HTML classiques
 app.use(express.json()); // requetes AJAX (enregistrer les dispos)
+
+// Chemin relatif sur (jamais une URL externe) vers laquelle revenir apres
+// connexion, ex: pour rejoindre un cercle juste apres s'etre connecte.
+function cheminRetourSur(valeur) {
+  return typeof valeur === 'string' && valeur.startsWith('/') && !valeur.startsWith('//') ? valeur : '/';
+}
 
 // Renvoie la liste des jours sur lesquels on peut voter pour une sortie :
 // soit les dates precises validees (mode "dates_precises"), soit tous les
@@ -235,6 +244,11 @@ app.get('/e/:id', async (req, res) => {
     orderBy: { createdAt: 'asc' },
   });
 
+  const photos = await prisma.photo.findMany({
+    where: { evenementId: evenement.id },
+    orderBy: { createdAt: 'desc' },
+  });
+
   // Texte partage entre le bandeau permanent et l'animation de validation.
   let texteValidation = null;
   if (evenement.statut === 'confirme') {
@@ -252,6 +266,8 @@ app.get('/e/:id', async (req, res) => {
     participants,
     datesEnAttente,
     lieuxEnAttente,
+    photos,
+    utilisateurConnecte: !!utilisateur,
     formaterJourLong,
     formatCompteVotes,
     texteValidation,
@@ -502,30 +518,33 @@ app.post('/e/:id/valider-sortie', async (req, res) => {
 
 app.get('/connexion', async (req, res) => {
   const utilisateur = await obtenirUtilisateurConnecte(req);
-  if (utilisateur) return res.redirect('/');
-  res.render('connexion', { erreur: null, raison: req.query.raison || null, cacherNav: true });
+  const retour = cheminRetourSur(req.query.retour);
+  if (utilisateur) return res.redirect(retour);
+  res.render('connexion', { erreur: null, raison: req.query.raison || null, retour, cacherNav: true });
 });
 
 app.post('/connexion/code', async (req, res) => {
   const email = (req.body.email || '').trim().toLowerCase();
+  const retour = cheminRetourSur(req.body.retour);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).render('connexion', { erreur: 'Merci d\'indiquer un email valide.', raison: null, cacherNav: true });
+    return res.status(400).render('connexion', { erreur: 'Merci d\'indiquer un email valide.', raison: null, retour, cacherNav: true });
   }
 
   const code = await genererEtEnregistrerCode(email);
-  res.render('connexion-code', { email, code, erreur: null, cacherNav: true });
+  res.render('connexion-code', { email, code, erreur: null, retour, cacherNav: true });
 });
 
 app.post('/connexion/verifier', async (req, res) => {
   const email = (req.body.email || '').trim().toLowerCase();
   const code = (req.body.code || '').trim();
+  const retour = cheminRetourSur(req.body.retour);
 
   const utilisateur = await verifierCodeEtConnecter(res, email, code);
   if (!utilisateur) {
-    return res.status(400).render('connexion-code', { email, code: null, erreur: 'Code invalide ou expire. Redemande-en un.', cacherNav: true });
+    return res.status(400).render('connexion-code', { email, code: null, erreur: 'Code invalide ou expire. Redemande-en un.', retour, cacherNav: true });
   }
 
-  res.redirect('/');
+  res.redirect(retour);
 });
 
 app.get('/deconnexion', async (req, res) => {
@@ -533,12 +552,161 @@ app.get('/deconnexion', async (req, res) => {
   res.redirect('/');
 });
 
-// ---------- Cercle (groupes) : necessite un compte, pas encore construit ----------
+// ---------- Cercles (groupes persistants, necessitent un compte) ----------
 
 app.get('/cercle', async (req, res) => {
   const utilisateur = await obtenirUtilisateurConnecte(req);
   if (!utilisateur) return res.redirect('/connexion?raison=cercle');
-  res.render('cercle-bientot', { ongletActif: 'cercle', cacherNav: false });
+
+  const mesCercles = await prisma.cercle.findMany({
+    where: { membres: { some: { userId: utilisateur.id } } },
+    include: { _count: { select: { membres: true } } },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  res.render('cercle-liste', { mesCercles, erreur: null, ongletActif: 'cercle', cacherNav: false });
+});
+
+app.post('/cercles', async (req, res) => {
+  const utilisateur = await obtenirUtilisateurConnecte(req);
+  if (!utilisateur) return res.redirect('/connexion?raison=cercle');
+
+  const nom = (req.body.nom || '').trim();
+  if (!nom) {
+    const mesCercles = await prisma.cercle.findMany({
+      where: { membres: { some: { userId: utilisateur.id } } },
+      include: { _count: { select: { membres: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return res.status(400).render('cercle-liste', { mesCercles, erreur: 'Merci de donner un nom au cercle.', ongletActif: 'cercle', cacherNav: false });
+  }
+
+  const cercle = await prisma.cercle.create({
+    data: { nom, createurId: utilisateur.id, membres: { create: [{ userId: utilisateur.id }] } },
+  });
+
+  res.redirect(`/cercle/${cercle.id}`);
+});
+
+app.get('/cercle/:id', async (req, res) => {
+  const utilisateur = await obtenirUtilisateurConnecte(req);
+  if (!utilisateur) return res.redirect(`/connexion?raison=cercle&retour=${encodeURIComponent(`/cercle/${req.params.id}`)}`);
+
+  const cercle = await prisma.cercle.findUnique({
+    where: { id: req.params.id },
+    include: { membres: { include: { user: true }, orderBy: { createdAt: 'asc' } } },
+  });
+  if (!cercle) return res.status(404).send('Cercle introuvable.');
+
+  const estMembre = cercle.membres.some((m) => m.userId === utilisateur.id);
+  if (!estMembre) return res.status(403).send('Tu n\'es pas membre de ce cercle.');
+
+  res.render('cercle-detail', {
+    cercle,
+    lienInvitation: `${req.protocol}://${req.get('host')}/rejoindre/${cercle.jetonInvitation}`,
+    ongletActif: 'cercle',
+    cacherNav: false,
+  });
+});
+
+app.get('/rejoindre/:jetonInvitation', async (req, res) => {
+  const cercle = await prisma.cercle.findUnique({ where: { jetonInvitation: req.params.jetonInvitation } });
+  if (!cercle) return res.status(404).send('Lien d\'invitation invalide.');
+
+  const utilisateur = await obtenirUtilisateurConnecte(req);
+  if (!utilisateur) {
+    return res.redirect(`/connexion?raison=cercle&retour=${encodeURIComponent(`/rejoindre/${req.params.jetonInvitation}`)}`);
+  }
+
+  await prisma.membreCercle.upsert({
+    where: { cercleId_userId: { cercleId: cercle.id, userId: utilisateur.id } },
+    create: { cercleId: cercle.id, userId: utilisateur.id },
+    update: {},
+  });
+
+  res.redirect(`/cercle/${cercle.id}`);
+});
+
+// ---------- Fiche participant sur une sortie : ajout a un cercle ----------
+
+app.get('/mes-cercles', async (req, res) => {
+  const utilisateur = await obtenirUtilisateurConnecte(req);
+  if (!utilisateur) return res.status(401).json({ erreur: 'Connecte-toi pour voir tes cercles.' });
+
+  const cercles = await prisma.cercle.findMany({
+    where: { membres: { some: { userId: utilisateur.id } } },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json({ cercles: cercles.map((c) => ({ id: c.id, nom: c.nom })) });
+});
+
+app.get('/e/:id/participants/:participantId', async (req, res) => {
+  const participant = await prisma.participant.findFirst({
+    where: { id: req.params.participantId, evenementId: req.params.id },
+  });
+  if (!participant) return res.status(404).json({ erreur: 'Participant introuvable.' });
+  res.json({ prenom: participant.prenom, aUnCompte: !!participant.userId });
+});
+
+app.post('/e/:id/participants/:participantId/ajouter-cercle', async (req, res) => {
+  const utilisateur = await obtenirUtilisateurConnecte(req);
+  if (!utilisateur) return res.status(401).json({ erreur: 'Connecte-toi pour ajouter quelqu\'un a un cercle.' });
+
+  const participant = await prisma.participant.findFirst({
+    where: { id: req.params.participantId, evenementId: req.params.id },
+  });
+  if (!participant) return res.status(404).json({ erreur: 'Participant introuvable.' });
+
+  let cercle;
+  const nouveauNom = (req.body.nouveauCercleNom || '').trim();
+  if (nouveauNom) {
+    cercle = await prisma.cercle.create({
+      data: { nom: nouveauNom, createurId: utilisateur.id, membres: { create: [{ userId: utilisateur.id }] } },
+    });
+  } else if (req.body.cercleId) {
+    cercle = await prisma.cercle.findFirst({
+      where: { id: req.body.cercleId, membres: { some: { userId: utilisateur.id } } },
+    });
+  }
+  if (!cercle) return res.status(400).json({ erreur: 'Choisis un cercle ou donne un nom pour en creer un.' });
+
+  if (participant.userId) {
+    await prisma.membreCercle.upsert({
+      where: { cercleId_userId: { cercleId: cercle.id, userId: participant.userId } },
+      create: { cercleId: cercle.id, userId: participant.userId, nomAffiche: participant.prenom },
+      update: { nomAffiche: participant.prenom },
+    });
+    return res.json({ ok: true, ajoute: true, cercleNom: cercle.nom });
+  }
+
+  // Pas de compte identifie : on ne peut pas l'ajouter directement, on
+  // propose un lien d'invitation vers ce cercle a transmettre.
+  res.json({
+    ok: true,
+    ajoute: false,
+    cercleNom: cercle.nom,
+    lienInvitation: `${req.protocol}://${req.get('host')}/rejoindre/${cercle.jetonInvitation}`,
+  });
+});
+
+// ---------- Photos souvenir sur une sortie ----------
+
+app.post('/e/:id/photos', uploadPhotos.array('photos', 10), async (req, res) => {
+  const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
+  if (!evenement) return res.status(404).send('Sortie introuvable.');
+
+  const prenom = (req.body.prenom || '').trim();
+  if (!prenom) return res.status(400).send('Merci d\'indiquer un prenom.');
+
+  const fichiers = req.files || [];
+  const imagesValides = fichiers.filter((f) => f.mimetype.startsWith('image/'));
+
+  for (const fichier of imagesValides) {
+    const url = await enregistrerPhoto(fichier);
+    await prisma.photo.create({ data: { evenementId: evenement.id, url, ajouteParPrenom: prenom } });
+  }
+
+  res.redirect(`/e/${evenement.id}#galerie`);
 });
 
 // ---------- Demarrage ----------

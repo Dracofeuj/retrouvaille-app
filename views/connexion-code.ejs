@@ -15,6 +15,7 @@
     <p class="message-erreur"><%= erreur %></p>
   <% } %>
   <input type="hidden" name="email" value="<%= email %>" />
+  <input type="hidden" name="retour" value="<%= retour %>" />
   <label class="champ">
     <span>Code reçu</span>
     <input type="text" name="code" inputmode="numeric" maxlength="6" placeholder="123456" required autofocus value="<%= code || '' %>" />

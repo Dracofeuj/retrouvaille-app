@@ -102,9 +102,37 @@
   <% } %>
 
   <% if (participants.length > 0) { %>
-    <p class="liste-participants">
-      A voté : <%= participants.map(function(p){ return p.prenom }).join(', ') %>
-    </p>
+    <p class="liste-participants-etiquette">A voté :</p>
+    <div class="liste-participants">
+      <% participants.forEach(function(p) { %>
+        <button type="button" class="pilule-participant" data-participant-id="<%= p.id %>"><%= p.prenom %></button>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
+<section class="carte" id="galerie">
+  <h2 class="titre-section">Photos souvenir</h2>
+
+  <form method="post" action="/e/<%= evenement.id %>/photos" enctype="multipart/form-data" id="formulaire-photos" class="bloc-upload-photos">
+    <input type="hidden" name="prenom" id="champ-prenom-photos" />
+    <label class="bouton bouton-secondaire bouton-pleine-largeur bouton-choisir-photos" for="champ-fichiers-photos">
+      + Ajouter des photos
+    </label>
+    <input type="file" name="photos" id="champ-fichiers-photos" accept="image/png,image/jpeg,image/heic" multiple hidden />
+    <p class="message-etat" id="message-etat-photos"></p>
+  </form>
+
+  <% if (photos.length === 0) { %>
+    <p class="aide">Aucune photo pour l'instant.</p>
+  <% } else { %>
+    <div class="galerie-photos">
+      <% photos.forEach(function(photo) { %>
+        <button type="button" class="vignette-photo" data-photo-url="<%= photo.url %>" aria-label="Photo de <%= photo.ajouteParPrenom %>">
+          <img src="<%= photo.url %>" alt="Photo ajoutée par <%= photo.ajouteParPrenom %>" loading="lazy" />
+        </button>
+      <% }) %>
+    </div>
   <% } %>
 </section>
 
@@ -188,6 +216,38 @@
   <span class="lien-sous-texte">pour inviter du monde</span>
 </p>
 
+<!-- Fiche participant (ouverte au clic sur un prenom) -->
+<div class="overlay-modale" id="modale-participant" hidden>
+  <div class="carte modale-contenu">
+    <button type="button" class="bouton-fermer-modale" id="bouton-fermer-modale-participant" aria-label="Fermer">&times;</button>
+    <h2 class="titre-section" id="modale-participant-prenom"></h2>
+
+    <div id="modale-participant-connecte-requis" hidden>
+      <p class="aide">Connecte-toi pour ajouter cette personne à un de tes cercles.</p>
+      <a class="bouton bouton-principal bouton-pleine-largeur" id="lien-connexion-depuis-modale">Se connecter</a>
+    </div>
+
+    <div id="modale-participant-ajout-cercle" hidden>
+      <label class="champ">
+        <span>Ajouter à un cercle</span>
+        <select id="select-cercle-modale">
+          <option value="">Choisis un cercle...</option>
+          <option value="__nouveau__">+ Créer un nouveau cercle</option>
+        </select>
+      </label>
+      <input type="text" id="champ-nouveau-cercle-modale" class="champ-texte-modale" placeholder="Nom du nouveau cercle" hidden />
+      <button type="button" class="bouton bouton-principal bouton-pleine-largeur" id="bouton-confirmer-ajout-cercle">Ajouter</button>
+      <p class="message-etat" id="message-etat-modale"></p>
+    </div>
+  </div>
+</div>
+
+<!-- Plein ecran pour une photo -->
+<div class="overlay-modale overlay-photo" id="modale-photo" hidden>
+  <button type="button" class="bouton-fermer-modale bouton-fermer-photo" id="bouton-fermer-modale-photo" aria-label="Fermer">&times;</button>
+  <img src="" alt="" id="image-modale-photo" />
+</div>
+
 <script>
   window.DONNEES_SORTIE = {
     evenementId: <%- JSON.stringify(evenement.id) %>,
@@ -197,9 +257,12 @@
     prenomOrganisateur: <%- JSON.stringify(estOrganisateur ? evenement.createurPrenom : null) %>,
     estConfirme: <%- JSON.stringify(evenement.statut === 'confirme') %>,
     texteValidation: <%- JSON.stringify(texteValidation) %>,
+    utilisateurConnecte: <%- JSON.stringify(utilisateurConnecte) %>,
   };
 </script>
 <script src="/js/copier.js"></script>
 <script src="/js/sortie.js"></script>
 <script src="/js/animation-validation.js"></script>
+<script src="/js/participant-modale.js"></script>
+<script src="/js/photos.js"></script>
 <%- include('partials/foot') %>

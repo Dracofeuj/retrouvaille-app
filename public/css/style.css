@@ -823,3 +823,148 @@ a.ligne-evenement-carte {
   text-decoration: none;
   cursor: pointer;
 }
+
+/* Participants cliquables */
+
+.liste-participants-etiquette {
+  font-size: 13px;
+  color: var(--texte-att);
+  margin: 12px 0 8px;
+}
+
+.liste-participants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pilule-participant {
+  border: none;
+  background: var(--surface);
+  color: var(--texte);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: var(--ombre-legere);
+}
+
+/* Fiche participant / modales generiques */
+
+.overlay-modale {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 0;
+}
+
+.overlay-modale[hidden] {
+  display: none;
+}
+
+@media (min-width: 480px) {
+  .overlay-modale {
+    align-items: center;
+  }
+}
+
+.modale-contenu {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  margin: 0;
+  border-radius: var(--rayon) var(--rayon) 0 0;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+@media (min-width: 480px) {
+  .modale-contenu {
+    border-radius: var(--rayon);
+    margin: 0 20px;
+  }
+}
+
+.bouton-fermer-modale {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--surface-haute);
+  color: var(--texte);
+  border-radius: 999px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--ombre-legere);
+  z-index: 1;
+}
+
+.champ-texte-modale {
+  width: 100%;
+  font-size: 16px;
+  font-family: inherit;
+  color: var(--texte);
+  padding: 12px 14px;
+  border: 1px solid var(--liseret);
+  border-radius: var(--rayon-petit);
+  background: var(--surface);
+  box-shadow: var(--ombre-creuse);
+  margin-bottom: 16px;
+}
+
+/* Photos */
+
+.bloc-upload-photos {
+  margin-bottom: 16px;
+}
+
+.bouton-choisir-photos {
+  display: block;
+  text-align: center;
+  cursor: pointer;
+}
+
+.galerie-photos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.vignette-photo {
+  aspect-ratio: 1 / 1;
+  border: none;
+  border-radius: var(--rayon-petit);
+  overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: var(--ombre-legere);
+  background: var(--surface);
+}
+
+.vignette-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.overlay-photo {
+  background: rgba(0, 0, 0, 0.92);
+  align-items: center;
+  padding: 20px;
+}
+
+.overlay-photo img {
+  max-width: 100%;
+  max-height: 90vh;
+  border-radius: var(--rayon-petit);
+}

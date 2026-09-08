@@ -11,11 +11,10 @@ venir/passées. Design neumorphique sombre (surfaces embossées, accent vert).
 
 Cette version couvre la boucle de vote (créer une sortie dans l'un des deux
 modes avec heure/lieu, voter, contre-proposer une date ou un lieu, voir le
-résultat, valider) et une première version des comptes (connexion par code,
-tableau de bord, navigation par onglets). Les groupes ("Cercle") sont
-présents dans la navigation mais pas encore construits — écran "Bientôt
-disponible" pour l'instant. Voir `CONTEXTE-PRODUIT.md` pour la vision
-complète.
+résultat, valider), les comptes (connexion par code, tableau de bord,
+navigation par onglets), les cercles (groupes persistants : créer, rejoindre
+via un lien, ajouter quelqu'un depuis une sortie) et les photos souvenir sur
+chaque sortie. Voir `CONTEXTE-PRODUIT.md` pour la vision complète.
 
 ## Lancer le projet en local
 
@@ -54,6 +53,7 @@ lib/heatmap.js          comptage des votes (dates et lieux) et calcul du "meille
 lib/organisateur.js     reconnaissance de l'organisateur (compte ou cookie)
 lib/auth.js             connexion par code email, sessions
 lib/cookies.js          lecture/ecriture de cookies (partage par organisateur.js et auth.js)
+lib/stockage-photos.js  enregistrement des photos uploadees (disque local pour l'instant)
 lib/db.js               connexion a la base de donnees (Prisma)
 views/                  pages HTML (moteur de template EJS)
 views/partials/nav-bas.ejs  navigation en bas d'ecran (3 onglets)
@@ -79,6 +79,13 @@ public/js/              interactivite cote navigateur (peindre les jours, copier
   `proposeParPrenom`), même logique que `DateProposee`.
 - **VoteLieu** : un lieu qu'un participant approuve (équivalent de `Dispo`
   pour les lieux).
+- **Photo** : une photo souvenir ajoutée par un participant sur une sortie
+  (`url`, `ajouteParPrenom`) — n'importe quel participant peut en ajouter,
+  pas seulement l'organisateur.
+- **Cercle** / **MembreCercle** : un groupe persistant et ses membres.
+  `nomAffiche` sur `MembreCercle` est un instantané du prénom utilisé au
+  moment de l'ajout (ex: depuis une sortie), pour afficher un nom sans
+  dépendre d'un futur systeme de profil complet.
 
 Le meilleur jour/lieu = celui qui a le plus de votes. La validation du jour
 et celle du lieu sont indépendantes : on peut confirmer l'un sans l'autre.
@@ -131,12 +138,46 @@ quelqu'un qui n'est pas connecté.
 Trois onglets fixés en bas d'écran (`views/partials/nav-bas.ejs`, inclus par
 `partials/foot.ejs`) : **Accueil** (`/`, tableau de bord ou écran invité),
 **Événement** (`/nouvelle-sortie`, création — accessible sans compte), et
-**Cercle** (`/cercle`, groupes — nécessite un compte, redirige vers
-`/connexion` sinon). La nav est masquée sur les écrans de connexion via le
+**Cercle** (`/cercle`, liste de ses cercles + création — nécessite un
+compte, redirige vers `/connexion?retour=...` sinon, et revient
+automatiquement sur la bonne page apres connexion). La nav est masquée sur
+les écrans de connexion via le
 local `cacherNav` passé explicitement par chaque route dans `server.js` (ne
 jamais l'assigner directement dans un template EJS : avec `with(locals)`,
 une assignation sur une variable absente des locals fuit en variable globale
 Node et contaminerait les autres requêtes du même processus).
+
+## Cercles : ajouter quelqu'un depuis une sortie
+
+Sur la page d'une sortie, le prénom de chaque participant est cliquable
+(`.pilule-participant`) et ouvre une fiche (`public/js/participant-modale.js`)
+avec un bouton "Ajouter à un cercle". Il faut être connecté pour l'utiliser
+(sinon la fiche propose de se connecter, avec retour automatique sur la
+sortie). Deux cas, gérés par la route
+`POST /e/:id/participants/:participantId/ajouter-cercle` :
+- **Le participant vise a un compte** (il a voté en étant connecté,
+  `Participant.userId` rempli) → ajouté directement comme membre du cercle.
+- **Il n'en a pas** (juste un prénom) → impossible de l'ajouter directement ;
+  la route renvoie plutôt le lien d'invitation du cercle
+  (`/rejoindre/:jetonInvitation`) à copier/transmettre.
+
+Hors périmètre pour l'instant (prévu plus tard) : importer les contacts du
+téléphone pour retrouver/inviter des gens par numéro directement dans un
+cercle — nécessite une permission mobile, à traiter séparément.
+
+## Photos
+
+Chaque participant (organisateur ou non) peut ajouter des photos sur la page
+d'une sortie (`public/js/photos.js` pour l'upload et la visionneuse plein
+écran). Stockées pour l'instant sur le disque local du serveur
+(`public/uploads/`, servi en statique, voir `lib/stockage-photos.js`).
+
+**Limite assumée** : sur un hébergeur sans disque persistant (Render en plan
+gratuit, comme la base de données), ces fichiers disparaissent au
+redémarrage/redéploiement. Pour brancher un stockage objet (ex: Cloudinary)
+plus tard, il suffit de changer le contenu de `enregistrerPhoto` dans
+`lib/stockage-photos.js` pour uploader vers ce service au lieu du disque, et
+renvoyer l'URL qu'il donne — le reste de l'app ne change pas.
 
 ## Passer de SQLite à PostgreSQL plus tard
 
@@ -161,10 +202,9 @@ Rien d'autre à changer dans le code de l'application.
 - Un "participant" reste identifié par son prénom sur un événement donné
   (`@@unique([evenementId, prenom])`) qu'il ait un compte ou non — le compte
   ne fait qu'ajouter un `userId` optionnel en plus, jamais une dépendance.
-- L'onglet "Cercle" (groupes) est un écran "Bientôt disponible"
-  (`views/cercle-bientot.ejs`) : le modèle de données pour les groupes n'a
-  pas encore été construit. Voir `CONTEXTE-PRODUIT.md` pour la vision
-  (cercles persistants, double rattachement evenement/groupe).
+- Les cercles n'ont pas (encore) de double rattachement événement/groupe
+  décrit dans `CONTEXTE-PRODUIT.md` (une sortie n'est pas encore liée à un
+  cercle) — pour l'instant, ils ne servent qu'à regrouper des personnes.
 
 ## Mettre en ligne (déploiement)
 

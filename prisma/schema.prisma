@@ -35,6 +35,19 @@ model Evenement {
   participants   Participant[]
   datesProposees DateProposee[]
   lieuxProposes  LieuPropose[]
+  photos         Photo[]
+}
+
+// Une photo souvenir ajoutee par un participant (avec ou sans compte) sur
+// la page d'une sortie.
+model Photo {
+  id              String   @id @default(cuid())
+  evenementId     String
+  url             String
+  ajouteParPrenom String
+  createdAt       DateTime @default(now())
+
+  evenement Evenement @relation(fields: [evenementId], references: [id], onDelete: Cascade)
 }
 
 // Une date precise, utilisee seulement en mode "dates_precises". Les dates
@@ -123,6 +136,8 @@ model User {
   evenementsCrees Evenement[]
   participations  Participant[]
   sessions        Session[]
+  cerclesCrees    Cercle[]
+  membreDe        MembreCercle[]
 }
 
 // Code a usage unique envoye par email pour se connecter (en mode test pour
@@ -146,4 +161,38 @@ model Session {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ---------- Cercles (groupes persistants) ----------
+
+// Un cercle d'amis/famille. Necessite un compte (contrairement aux
+// evenements, qui restent accessibles sans compte).
+model Cercle {
+  id     String @id @default(cuid())
+  nom    String
+  // Lien d'invitation pour rejoindre le cercle (rejoindre = arriver avec un
+  // compte ; voir route GET /rejoindre/:jetonInvitation).
+  jetonInvitation String @unique @default(cuid())
+  createurId      String
+  createdAt       DateTime @default(now())
+
+  createur User           @relation(fields: [createurId], references: [id])
+  membres  MembreCercle[]
+}
+
+// Un membre d'un cercle. `nomAffiche` est un instantane du prenom utilise au
+// moment de l'ajout (ex: le prenom qu'il avait sur l'evenement source) : ca
+// evite de dependre d'un futur systeme de profil pour juste afficher un nom
+// dans la liste des membres.
+model MembreCercle {
+  id          String   @id @default(cuid())
+  cercleId    String
+  userId      String
+  nomAffiche  String?
+  createdAt   DateTime @default(now())
+
+  cercle Cercle @relation(fields: [cercleId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([cercleId, userId])
 }
